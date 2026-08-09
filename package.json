@@ -1,6 +1,6 @@
 {
   "name": "daggerheart-target-helper",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Eryndor: Target Helper — targeting quality-of-life tools for Daggerheart games in FoundryVTT.",
   "type": "module",
   "private": true,
