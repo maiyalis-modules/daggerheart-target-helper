@@ -9,6 +9,10 @@
   "DHTH.Picker.Cancel": "Cancel",
   "DHTH.Picker.Difficulty": "Diff",
   "DHTH.Picker.Evasion": "Evade",
+  "DHTH.Picker.Group.Enemies": "Enemies",
+  "DHTH.Picker.Group.Neutral": "Neutral",
+  "DHTH.Picker.Group.Allies": "Allies",
+  "DHTH.Picker.Defeated": "Defeated",
   "DHTH.Picker.HintSingle": "No target selected. Choose one to continue.",
   "DHTH.Picker.HintMulti": "No target selected. Choose your targets, then confirm.",
   "DHTH.Picker.Selected": "{count} selected",
@@ -23,6 +27,9 @@
 
   "DHTH.Settings.PortraitIntegration.Name": "Show Target Portraits",
   "DHTH.Settings.PortraitIntegration.Hint": "When a targeted action is used, raise the target's portrait in Ginzzzu's Portraits & NPC Dock and animate it. Requires that module; ignored otherwise.",
+
+  "DHTH.Settings.DamageNumbers.Name": "Floating Damage Numbers",
+  "DHTH.Settings.DamageNumbers.Hint": "Float resource changes off a target's portrait as they happen — Hit Points marked, Stress, healing. The system's own scrolling text is drawn over tokens, which are not visible in Theatre of the Mind. Requires Show Target Portraits.",
 
   "DHTH.Settings.PortraitLinger.Name": "Portrait Linger (seconds)",
   "DHTH.Settings.PortraitLinger.Hint": "How long a target's portrait stays up after the last damage or healing it received. Portraits you raised by hand are never closed.",

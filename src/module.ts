@@ -8,6 +8,7 @@ import { LOG_PREFIX, TEMPLATES } from "./constants.js";
 import { registerSettings } from "./settings.js";
 import { registerActionPortraits } from "./targeting/action-portraits.js";
 import { registerMissFeedback } from "./targeting/miss-feedback.js";
+import { registerResourceFeedback } from "./targeting/resource-feedback.js";
 import { registerTargetGuard } from "./targeting/target-guard.js";
 
 Hooks.once("init", async () => {
@@ -18,6 +19,7 @@ Hooks.once("init", async () => {
   registerTargetGuard();
   registerActionPortraits();
   registerMissFeedback();
+  registerResourceFeedback();
   await foundry.applications.handlebars.loadTemplates(Object.values(TEMPLATES));
 });
 

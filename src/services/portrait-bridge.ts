@@ -104,6 +104,22 @@ export function armLinger(actorId: string, ms: number = lingerMs()): void {
   lingerTimers.set(actorId, handle);
 }
 
+/**
+ * Cut short the hold on portraits raised for an action that never happened.
+ *
+ * Re-arms the *short* linger rather than lowering on the spot: the portrait may
+ * have appeared a fraction of a second ago, and yanking it mid-animation reads
+ * as a glitch. This mostly matters for attacks, which take the 45-second
+ * `EFFECT_GRACE_MS` hold — without this an abandoned attack parks the target on
+ * screen for the better part of a minute.
+ *
+ * Portraits the GM raised by hand are unaffected: `lowerIfOurs` only touches
+ * what we put up.
+ */
+export function releaseTargets(actorIds: string[]): void {
+  for (const actorId of actorIds) armLinger(actorId);
+}
+
 /** Lower a portrait, but only if we were the ones who raised it. */
 async function lowerIfOurs(actorId: string): Promise<void> {
   const portraits = api();

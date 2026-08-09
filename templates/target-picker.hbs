@@ -1,36 +1,64 @@
 <section class="totm-target-dialog">
   <p class="totm-target-dialog__hint">{{hint}}</p>
 
-  <ol class="totm-target-dialog__list">
-    {{#each targets as |target|}}
-      <li class="totm-target-dialog__row">
-        <button
-          type="button"
-          class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}"
-          data-dhth="pick"
-          data-token-id="{{target.id}}"
-          {{#if target.disabled}}disabled{{/if}}
-        >
-          <img class="totm-target-btn__portrait" src="{{target.img}}" alt="" />
-          <span class="totm-target-btn__name">{{target.name}}</span>
-          <span class="totm-target-btn__stats">
-            {{#if target.hasDifficulty}}
-              <span class="totm-target-btn__stat totm-target-btn__stat--difficulty">
-                <span class="totm-target-btn__stat-label">{{localize "DHTH.Picker.Difficulty"}}</span>
-                <span class="totm-target-btn__stat-value">{{target.difficulty}}</span>
-              </span>
-            {{/if}}
-            {{#if target.hasEvasion}}
-              <span class="totm-target-btn__stat totm-target-btn__stat--evasion">
-                <span class="totm-target-btn__stat-label">{{localize "DHTH.Picker.Evasion"}}</span>
-                <span class="totm-target-btn__stat-value">{{target.evasion}}</span>
-              </span>
-            {{/if}}
-          </span>
-        </button>
-      </li>
+  <div class="totm-target-dialog__list">
+    {{#each groups as |group|}}
+      <section class="totm-target-group totm-target-group--{{group.key}}">
+        <h4 class="totm-target-group__heading">{{group.label}}</h4>
+
+        <ol class="totm-target-group__list">
+          {{#each group.targets as |target|}}
+            <li class="totm-target-dialog__row">
+              <button
+                type="button"
+                class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}{{#if target.isDefeated}} totm-target-btn--defeated{{/if}}"
+                data-dhth="pick"
+                data-token-id="{{target.id}}"
+                {{#if target.disabled}}disabled{{/if}}
+              >
+                <img class="totm-target-btn__portrait" src="{{target.img}}" alt="" />
+
+                <span class="totm-target-btn__label">
+                  <span class="totm-target-btn__name">{{target.name}}</span>
+
+                  <span class="totm-target-btn__tags">
+                    {{#if target.isDefeated}}
+                      <span class="totm-target-btn__defeated">{{target.defeatedLabel}}</span>
+                    {{/if}}
+                    {{#if target.hasConditions}}
+                      {{#each target.conditions as |condition|}}
+                        <img
+                          class="totm-target-btn__condition"
+                          src="{{condition.img}}"
+                          alt="{{condition.name}}"
+                          title="{{condition.name}}"
+                        />
+                      {{/each}}
+                    {{/if}}
+                  </span>
+                </span>
+
+                <span class="totm-target-btn__stats">
+                  {{#if target.hasDifficulty}}
+                    <span class="totm-target-btn__stat totm-target-btn__stat--difficulty">
+                      <span class="totm-target-btn__stat-label">{{localize "DHTH.Picker.Difficulty"}}</span>
+                      <span class="totm-target-btn__stat-value">{{target.difficulty}}</span>
+                    </span>
+                  {{/if}}
+                  {{#if target.hasEvasion}}
+                    <span class="totm-target-btn__stat totm-target-btn__stat--evasion">
+                      <span class="totm-target-btn__stat-label">{{localize "DHTH.Picker.Evasion"}}</span>
+                      <span class="totm-target-btn__stat-value">{{target.evasion}}</span>
+                    </span>
+                  {{/if}}
+                </span>
+              </button>
+            </li>
+          {{/each}}
+        </ol>
+      </section>
     {{/each}}
-  </ol>
+  </div>
 
   <button
     type="button"

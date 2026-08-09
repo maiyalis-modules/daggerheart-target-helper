@@ -1,6 +1,21 @@
 import { MODULE_ID, TEMPLATES } from "../constants.js";
+import type { TargetCandidate, TargetGroup } from "../targeting/candidates.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+/**
+ * Section order, and the lang key for each heading.
+ *
+ * Enemies lead because they're what most targeted actions are aimed at, and
+ * allies come last on purpose: for an `any`-target action the picker is the last
+ * thing between a player and damaging their own party, so the friendly rows
+ * shouldn't sit under the cursor.
+ */
+const GROUP_ORDER: { key: TargetGroup; label: string }[] = [
+  { key: "enemy", label: "DHTH.Picker.Group.Enemies" },
+  { key: "neutral", label: "DHTH.Picker.Group.Neutral" },
+  { key: "ally", label: "DHTH.Picker.Group.Allies" },
+];
 
 export interface TargetPickerOptions {
   /** Max selectable targets. `Infinity` when the action declares no limit. */
@@ -25,14 +40,14 @@ export type TargetPickerResult = string[] | "none" | null;
  * a half-applied state.
  */
 export class TargetPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
-  private readonly targets: DhFormattedTarget[];
+  private readonly targets: TargetCandidate[];
   private readonly max: number;
   private readonly selected = new Set<string>();
   private resolver: ((result: TargetPickerResult) => void) | null;
   private settled = false;
 
   constructor(
-    targets: DhFormattedTarget[],
+    targets: TargetCandidate[],
     pickerOptions: TargetPickerOptions,
     resolver: (result: TargetPickerResult) => void,
     options: AnyObject = {},
@@ -76,7 +91,7 @@ export class TargetPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
    * @returns The chosen token ids, or `null` if cancelled or dismissed.
    */
   static async prompt(
-    targets: DhFormattedTarget[],
+    targets: TargetCandidate[],
     pickerOptions: TargetPickerOptions,
   ): Promise<TargetPickerResult> {
     return new Promise<TargetPickerResult>((resolve) => {
@@ -161,15 +176,30 @@ export class TargetPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const atCap = multi && this.selected.size >= this.max;
 
     // Handlebars here has no `eq` helper and no `{{else if}}`, so every branch
-    // the template needs is precomputed into a boolean (see CLAUDE.md).
+    // the template needs is precomputed into a boolean (see CLAUDE.md). That
+    // includes the sections: the grouping is done here, and the template just
+    // walks whatever it's handed.
+    const rows = this.targets.map((target) => ({
+      ...target,
+      selected: this.selected.has(target.id),
+      disabled: atCap && !this.selected.has(target.id),
+      hasDifficulty: target.difficulty !== null && target.difficulty !== undefined,
+      hasEvasion: target.evasion !== null && target.evasion !== undefined,
+      isDefeated: target.defeated !== null,
+      defeatedLabel: target.defeated?.name ?? "",
+      hasConditions: target.conditions.length > 0,
+    }));
+
+    // Empty sections are dropped rather than rendered as headings with nothing
+    // under them — most actions are disposition-filtered and yield exactly one.
+    const groups = GROUP_ORDER.map((group) => ({
+      key: group.key,
+      label: game.i18n.localize(group.label),
+      targets: rows.filter((row) => row.group === group.key),
+    })).filter((group) => group.targets.length > 0);
+
     return {
-      targets: this.targets.map((target) => ({
-        ...target,
-        selected: this.selected.has(target.id),
-        disabled: atCap && !this.selected.has(target.id),
-        hasDifficulty: target.difficulty !== null && target.difficulty !== undefined,
-        hasEvasion: target.evasion !== null && target.evasion !== undefined,
-      })),
+      groups,
       multi,
       canConfirm: this.selected.size > 0,
       countLabel: capped

@@ -8,13 +8,20 @@
  *   with no targets is cancelled before we ever see it (`Hooks.call` stops at
  *   the first handler returning `false`); the guard's replay then reaches us
  *   with targets in hand.
+ * - `<module>.actionAbandoned` — ours, fired by the target guard when a replayed
+ *   action is backed out of. The portraits were already raised by the replay's
+ *   `preUseAction`, so this is what stops them lingering for an action that never
+ *   happened.
  * - `daggerheart.postTakeDamage` / `postTakeHealing` — fire on the affected
- *   actor, which is all the correlation the flashes need. Damage also checks
- *   whether the blow was lethal (HP fully marked) to grey out the portrait.
+ *   actor, which is all the correlation the flashes need. Used for the animation
+ *   *only*; the resources on that actor are still pre-update, so anything that
+ *   depends on the new values (the killed-target veil, the floating numbers)
+ *   lives in `resource-feedback.ts` and hangs off the document update instead.
  *
  * Every handler is wrapped: this is cosmetic, and must never break an action.
  */
 import {
+  ACTION_ABANDONED_HOOK,
   LOG_PREFIX,
   MODULE_ID,
   POST_TAKE_DAMAGE_HOOK,
@@ -24,34 +31,27 @@ import {
   SETTINGS,
 } from "../constants.js";
 import { worldActorId, worldActorIdFromUuid } from "../services/actor-ids.js";
-import { armLinger, raiseTargets } from "../services/portrait-bridge.js";
-import { playFx, setDead } from "../services/portrait-fx.js";
+import { armLinger, raiseTargets, releaseTargets } from "../services/portrait-bridge.js";
+import { playFx } from "../services/portrait-fx.js";
 import {
-  emitPortraitDead,
   emitPortraitFx,
   emitTargetsEngaged,
+  emitTargetsReleased,
   registerSocket,
   type PortraitFxKind,
   type TargetsEngagedPayload,
 } from "../services/socket.js";
 
-/** A blow is lethal when hit points are fully marked (value ≥ max, max > 0). */
-function isActorDead(actor: AnyObject): boolean {
-  const hp = actor?.["system"]?.resources?.hitPoints as
-    | { value?: number; max?: number }
-    | undefined;
-  return Boolean(hp && (hp.max ?? 0) > 0 && (hp.value ?? 0) >= (hp.max ?? 0));
-}
-
 export function registerActionPortraits(): void {
   registerSocket({
     onTargetsEngaged: handleTargetsEngaged,
+    onTargetsReleased: releaseTargets,
     onPortraitFx: handlePortraitFx,
-    onPortraitDead: (actorId, dead) => void setDead(actorId, dead),
   });
 
   Hooks.on(PRE_USE_ACTION_HOOK, onPreUseAction);
   Hooks.on(POST_USE_ACTION_HOOK, onPostUseAction);
+  Hooks.on(ACTION_ABANDONED_HOOK, onActionAbandoned);
   Hooks.on(POST_TAKE_DAMAGE_HOOK, (actor: AnyObject) => onEffectApplied(actor, "damage"));
   Hooks.on(POST_TAKE_HEALING_HOOK, (actor: AnyObject) => onEffectApplied(actor, "heal"));
 }
@@ -84,6 +84,33 @@ function onPreUseAction(action: DhAction, config: DhActionConfig): void {
 }
 
 /**
+ * The guard replayed an action, its `preUseAction` raised the target portraits,
+ * and then the player backed out — so nothing is coming. Cut the hold short.
+ *
+ * Only the guard's own path is covered: it is the one place we can tell an
+ * abandon from a completion. An action targeted by hand and then abandoned still
+ * rides out the full grace window.
+ *
+ * @param tokenIds The token ids the guard applied. The acting actor can't be
+ *   among them — `collectCandidates` never offers it — so there is no self-target
+ *   to exclude here, unlike `onPreUseAction`.
+ */
+function onActionAbandoned(_action: DhAction, tokenIds: string[]): void {
+  try {
+    const actorIds: string[] = [];
+    for (const tokenId of tokenIds) {
+      const id = worldActorId(canvas.tokens?.get(tokenId)?.actor?.id);
+      if (id) actorIds.push(id);
+    }
+
+    if (actorIds.length === 0) return;
+    emitTargetsReleased(actorIds);
+  } catch (error) {
+    console.warn(`${LOG_PREFIX} Could not release portraits for an abandoned action.`, error);
+  }
+}
+
+/**
  * Release the acting user's targets once the action's `use()` completes. Runs on
  * the acting client (targets are per-user). Damage is unaffected: the chat card
  * captured its targets at roll time (`hitTargets`) and never reads live targets.
@@ -99,19 +126,19 @@ function onPostUseAction(_action: DhAction, config: DhActionConfig): void {
   }
 }
 
+/**
+ * Flash the portrait for damage or healing.
+ *
+ * Only the animation: whether the blow *killed* them is decided from the actual
+ * actor update in `resource-feedback.ts`, because the resources on the actor these
+ * hooks pass are still pre-update (see `POST_TAKE_DAMAGE_HOOK` in constants.ts).
+ * Reading them here is what made a fresh kill fail to grey out.
+ */
 function onEffectApplied(actor: AnyObject, kind: PortraitFxKind): void {
   try {
     const id = worldActorId(actor?.["id"] as string | undefined);
     if (!id) return;
     emitPortraitFx(id, kind);
-
-    // Grey out a killed target after the damage flash; clear the veil on a heal
-    // that brings them back. HP is already updated by the time this hook fires.
-    if (kind === "damage") {
-      if (isActorDead(actor)) emitPortraitDead(id, true);
-    } else if (!isActorDead(actor)) {
-      emitPortraitDead(id, false);
-    }
   } catch (error) {
     console.warn(`${LOG_PREFIX} Could not announce a portrait effect.`, error);
   }

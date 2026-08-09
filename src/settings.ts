@@ -25,6 +25,17 @@ export function registerSettings(): void {
     default: true,
   });
 
+  // World-scoped for the same reason as the portraits themselves: it's a shared
+  // visual the whole table sees, not a per-player preference.
+  game.settings.register(MODULE_ID, SETTINGS.damageNumbers, {
+    name: "DHTH.Settings.DamageNumbers.Name",
+    hint: "DHTH.Settings.DamageNumbers.Hint",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
   game.settings.register(MODULE_ID, SETTINGS.portraitLingerSeconds, {
     name: "DHTH.Settings.PortraitLinger.Name",
     hint: "DHTH.Settings.PortraitLinger.Hint",

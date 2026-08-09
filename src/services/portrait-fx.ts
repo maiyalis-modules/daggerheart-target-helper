@@ -23,6 +23,22 @@ const FX_CLASS: Record<FxKind, string> = {
 /** Persistent (non-animated) class marking a killed target's portrait. */
 const DEAD_CLASS = "dhth-dead";
 
+/** Class on a floating resource-change number. */
+const FLOAT_CLASS = "dhth-float";
+
+/**
+ * How a floating number reads. Both the colour and the travel direction come
+ * from this: harm and stress rise, relief sinks — so the three stay tellable
+ * apart without relying on hue alone.
+ */
+export type FloatTone = "harm" | "stress" | "help";
+
+/** Rising tones. Everything else sinks. */
+const RISING: ReadonlySet<FloatTone> = new Set<FloatTone>(["harm", "stress"]);
+
+/** Must outlast the float animation in module.css, including its fade tail. */
+const FLOAT_TIMEOUT_MS = 4000;
+
 /** Hold the greyscale until just past the damage flash, so it reads as "then". */
 const DEAD_DELAY_MS = 700;
 
@@ -85,6 +101,48 @@ export async function playFx(actorId: string, kind: FxKind): Promise<void> {
   } catch (error) {
     // Cosmetic only — never let this surface to the player.
     console.warn(`${LOG_PREFIX} Portrait effect failed.`, error);
+  }
+}
+
+/**
+ * Float a resource change off a portrait — "HP +2", "Stress +1", and so on.
+ *
+ * This is the Theatre of the Mind stand-in for the system's own scrolling combat
+ * text, which `createScrollText` (daggerheart.js:7434) draws over
+ * `actor.getActiveTokens()` — invisible at a table whose tokens are off-screen.
+ *
+ * @param tone Drives the colour and travel direction — see `FloatTone`.
+ */
+export async function floatText(actorId: string, text: string, tone: FloatTone): Promise<void> {
+  try {
+    const wrapper = await waitForWrapper(actorId);
+    if (!wrapper) return;
+
+    // The float is absolutely positioned, so it needs a positioned ancestor or it
+    // escapes to whatever is further up Ginzzzu's dock. Nudge only this element,
+    // and only when it isn't already positioned — a CSS rule aimed at their
+    // wrapper would apply to every portrait whether we're floating on it or not.
+    if (getComputedStyle(wrapper).position === "static") wrapper.style.position = "relative";
+
+    const direction = RISING.has(tone) ? "rise" : "sink";
+    const node = document.createElement("span");
+    node.className = `${FLOAT_CLASS} ${FLOAT_CLASS}--${direction} ${FLOAT_CLASS}--${tone}`;
+    node.textContent = text;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const remove = (): void => {
+      if (timer !== undefined) clearTimeout(timer);
+      node.remove();
+    };
+
+    // Backstopped as well as event-driven: a node that outlives its animation
+    // would sit on the portrait permanently.
+    node.addEventListener("animationend", remove);
+    timer = setTimeout(remove, FLOAT_TIMEOUT_MS);
+
+    wrapper.appendChild(node);
+  } catch (error) {
+    console.warn(`${LOG_PREFIX} Could not float a resource change.`, error);
   }
 }
 

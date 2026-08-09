@@ -28,16 +28,19 @@ export interface TargetsEngagedPayload {
 
 type SocketMessage =
   | ({ type: "targetsEngaged" } & TargetsEngagedPayload)
-  | { type: "portraitFx"; actorId: string; kind: PortraitFxKind }
-  | { type: "portraitDead"; actorId: string; dead: boolean };
+  | { type: "targetsReleased"; actorIds: string[] }
+  | { type: "portraitFx"; actorId: string; kind: PortraitFxKind };
 
 export interface SocketHandlers {
   /** Runs on every client. GM-only work is branched inside the handler. */
   onTargetsEngaged: (payload: TargetsEngagedPayload) => void;
+  /**
+   * The action those targets were engaged for never happened. Runs on every
+   * client; only the GM has a portrait to drop.
+   */
+  onTargetsReleased: (actorIds: string[]) => void;
   /** Runs on every client. */
   onPortraitFx: (actorId: string, kind: PortraitFxKind) => void;
-  /** Runs on every client: a target was killed (or revived). */
-  onPortraitDead: (actorId: string, dead: boolean) => void;
 }
 
 let handlers: SocketHandlers | null = null;
@@ -52,11 +55,11 @@ function dispatch(message: SocketMessage): void {
         expectsEffect: message.expectsEffect,
       });
       return;
+    case "targetsReleased":
+      handlers.onTargetsReleased(message.actorIds);
+      return;
     case "portraitFx":
       handlers.onPortraitFx(message.actorId, message.kind);
-      return;
-    case "portraitDead":
-      handlers.onPortraitDead(message.actorId, message.dead);
       return;
   }
 }
@@ -76,10 +79,10 @@ export function emitTargetsEngaged(payload: TargetsEngagedPayload): void {
   broadcast({ type: "targetsEngaged", ...payload });
 }
 
-export function emitPortraitFx(actorId: string, kind: PortraitFxKind): void {
-  broadcast({ type: "portraitFx", actorId, kind });
+export function emitTargetsReleased(actorIds: string[]): void {
+  broadcast({ type: "targetsReleased", actorIds });
 }
 
-export function emitPortraitDead(actorId: string, dead: boolean): void {
-  broadcast({ type: "portraitDead", actorId, dead });
+export function emitPortraitFx(actorId: string, kind: PortraitFxKind): void {
+  broadcast({ type: "portraitFx", actorId, kind });
 }

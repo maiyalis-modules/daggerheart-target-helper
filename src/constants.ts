@@ -18,6 +18,8 @@ export const SETTINGS = {
   clearTargetsAfterAction: "clearTargetsAfterAction",
   /** On a full miss: hide the damage prompt and flash a block on the target. */
   missFeedback: "missFeedback",
+  /** Float resource changes (HP marked, Stress, healing) off the portrait. */
+  damageNumbers: "damageNumbers",
 } as const;
 
 /** Foundry template paths (served from the module root at runtime). */
@@ -51,9 +53,38 @@ export const POST_USE_ACTION_HOOK = `${DAGGERHEART_ID}.postUseAction` as const;
  */
 export const PRE_DAMAGE_ACTION_HOOK = `${DAGGERHEART_ID}.preDamageAction` as const;
 
-/** Fired on the affected actor once damage/healing has been applied. */
+/**
+ * Fired on the affected actor once damage/healing has been *dispatched* — note
+ * that is not the same as applied. `modifyResource` (daggerheart.js:16133) writes
+ * inside `forEach(async …)`, which discards the promises, and for a non-GM the
+ * write is a fire-and-forget socket emit to the GM (daggerheart.js:12421). So the
+ * actor these hooks hand you still holds its *old* resource values.
+ *
+ * Good enough to trigger an animation; never read a resource off it. Anything
+ * that depends on the new value belongs on `UPDATE_ACTOR_HOOK` instead.
+ */
 export const POST_TAKE_DAMAGE_HOOK = `${DAGGERHEART_ID}.postTakeDamage` as const;
 export const POST_TAKE_HEALING_HOOK = `${DAGGERHEART_ID}.postTakeHealing` as const;
+
+/**
+ * Core document hooks. `preUpdateActor` runs only on the client that initiates
+ * the update — for a player attacking an adversary that is the *GM's* client —
+ * while `updateActor` runs on every client once the change has landed. Options
+ * set during the pre hook are replicated with the update, which is how data
+ * crosses that gap (the system does the same with `scrollingTextData`).
+ */
+export const PRE_UPDATE_ACTOR_HOOK = "preUpdateActor" as const;
+export const UPDATE_ACTOR_HOOK = "updateActor" as const;
+
+/**
+ * Our own hook, fired by the target guard when a replayed action is abandoned
+ * (the roll dialog dismissed, or the replay threw) after the picker had already
+ * applied targets. Passed `(action, tokenIds)` — the token ids the guard set.
+ *
+ * It exists so the guard stays targeting-only: the portrait integration listens
+ * for this rather than the guard reaching into the portrait bridge itself.
+ */
+export const ACTION_ABANDONED_HOOK = `${MODULE_ID}.actionAbandoned` as const;
 
 /** Ginzzzu's Portraits & NPC Dock — an optional enhancement, never a dependency. */
 export const PORTRAITS_MODULE_ID = "ginzzzu-portraits" as const;

@@ -5,6 +5,19 @@
  * (daggerheart.js:33005) so the candidates we offer are exactly the ones the
  * action workflow will accept once they're targeted.
  */
+import { activeConditions, defeatedBadge, type ConditionBadge } from "../services/actor-state.js";
+
+/** Which side of the fight a candidate is on, relative to the acting actor. */
+export type TargetGroup = "enemy" | "neutral" | "ally";
+
+/** A formatted target plus everything the picker shows around it. */
+export interface TargetCandidate extends DhFormattedTarget {
+  group: TargetGroup;
+  /** Set when the target is down; carries *how* (Dead, Unconscious, …). */
+  defeated: ConditionBadge | null;
+  /** Conditions other than defeat, sorted by name. */
+  conditions: ConditionBadge[];
+}
 
 /**
  * Reach the system's TargetField statics. Available from the system's `init`
@@ -32,13 +45,48 @@ function fallbackFormat(token: Token): DhFormattedTarget {
   };
 }
 
+/** An actor's own disposition, for the grouping fallback below. */
+function dispositionOf(actor: DhActor | null): number | null {
+  const disposition = (actor?.token ?? actor?.prototypeToken)?.disposition;
+  return typeof disposition === "number" ? disposition : null;
+}
+
+/**
+ * Which side a token is on, relative to the acting actor.
+ *
+ * Uses the system's own comparison so the grouping the player sees agrees with
+ * the filtering the workflow applies. The fallback mirrors `isTargetFriendly`
+ * (daggerheart.js:33069): same disposition is an ally, dispositions cancelling
+ * to zero are enemies, anything else is neutral.
+ */
+function groupFor(
+  actor: DhActor | null,
+  token: Token,
+  targetField: DhTargetFieldStatics | null,
+): TargetGroup {
+  if (!actor) return "neutral";
+
+  if (targetField) {
+    if (targetField.isTargetFriendly(actor, token, "friendly")) return "ally";
+    if (targetField.isTargetFriendly(actor, token, "hostile")) return "enemy";
+    return "neutral";
+  }
+
+  const mine = dispositionOf(actor);
+  const theirs = token.document.disposition;
+  if (mine === null) return "neutral";
+  if (mine === theirs) return "ally";
+  if (mine + theirs === 0) return "enemy";
+  return "neutral";
+}
+
 /**
  * Collect valid, pickable targets in the active scene for a given action.
  *
  * @param action The action being used, whose `target.type` drives disposition filtering.
- * @returns Formatted targets, sorted by name. Empty if nothing valid is present.
+ * @returns Candidates sorted by name, the downed ones last. Empty if nothing valid is present.
  */
-export function collectCandidates(action: DhAction): DhFormattedTarget[] {
+export function collectCandidates(action: DhAction): TargetCandidate[] {
   const tokens = canvas.tokens?.placeables ?? [];
   const targetField = getTargetField();
   const actor = action.actor ?? null;
@@ -66,10 +114,18 @@ export function collectCandidates(action: DhAction): DhFormattedTarget[] {
     return targetField.isTargetFriendly(actor, token, type);
   });
 
-  const formatted = candidates.map((token) =>
-    targetField ? targetField.formatTarget(token) : fallbackFormat(token),
-  );
+  const formatted = candidates.map((token) => ({
+    ...(targetField ? targetField.formatTarget(token) : fallbackFormat(token)),
+    group: groupFor(actor, token, targetField),
+    defeated: defeatedBadge(token.actor),
+    conditions: activeConditions(token.actor),
+  }));
 
-  formatted.sort((a, b) => a.name.localeCompare(b.name));
+  // Downed targets sink to the bottom of their section: still pickable (finishing
+  // a blow, or healing someone up), just never the first thing under the cursor.
+  formatted.sort((a, b) => {
+    if (Boolean(a.defeated) !== Boolean(b.defeated)) return a.defeated ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
   return formatted;
 }

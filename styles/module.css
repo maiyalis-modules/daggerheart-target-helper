@@ -49,20 +49,72 @@
   opacity: 0.75;
 }
 
+/* The scroll container. Sections live inside it so headings scroll with their
+ * rows rather than the window growing past the viewport. */
 .totm-target-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  /* Keep long adversary lists inside the window rather than growing it. */
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.totm-target-group__list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  /* Keep long adversary lists inside the window rather than growing it. */
-  max-height: 22rem;
-  overflow-y: auto;
 }
 
 .totm-target-dialog__row {
   margin: 0;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sections: enemies / neutral / allies                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Each section carries its own accent, applied to the heading, the rule under
+ * it, and the stripe down the left of every row. Colour is never the only
+ * signal — the heading text says which group it is. */
+.totm-target-group {
+  --totm-group-accent: rgb(150 150 150);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.totm-target-group--enemy {
+  --totm-group-accent: rgb(200 70 60);
+}
+
+.totm-target-group--neutral {
+  --totm-group-accent: rgb(200 160 60);
+}
+
+.totm-target-group--ally {
+  --totm-group-accent: rgb(80 165 110);
+}
+
+.totm-target-group__heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid var(--totm-group-accent);
+  color: var(--totm-group-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.totm-target-group .totm-target-btn {
+  border-left: 3px solid var(--totm-group-accent);
 }
 
 /* Large, click-friendly rows — these get hit fast, mid-combat. */
@@ -121,10 +173,72 @@
   flex: 0 0 auto;
 }
 
+.totm-target-btn__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
 .totm-target-btn__name {
   font-weight: 600;
   line-height: 1.2;
   overflow-wrap: anywhere;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Defeat and conditions                                                      */
+/* -------------------------------------------------------------------------- */
+
+.totm-target-btn__tags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+/* Downed targets stay pickable — you may well want to finish them off, or heal
+ * them up — so this reads as "already down", not "unavailable". The row is
+ * greyed and struck through; `--defeated` never sets `disabled`. */
+.totm-target-btn--defeated {
+  opacity: 0.62;
+}
+
+.totm-target-btn--defeated:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.totm-target-btn--defeated .totm-target-btn__portrait {
+  filter: grayscale(100%);
+}
+
+.totm-target-btn--defeated .totm-target-btn__name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+/* Named rather than a generic skull: "Unconscious" and "Dead" are very different
+ * answers to "should I hit this one?" */
+.totm-target-btn__defeated {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid rgb(190 60 60 / 70%);
+  border-radius: 2px;
+  background: rgb(190 60 60 / 18%);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.totm-target-btn__condition {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  border: 1px solid rgb(0 0 0 / 35%);
+  border-radius: 2px;
+  background: rgb(0 0 0 / 25%);
+  flex: 0 0 auto;
 }
 
 .totm-target-btn__stats {
@@ -259,6 +373,104 @@
   filter: grayscale(1) brightness(0.72) !important;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Floating resource numbers                                                  */
+/* -------------------------------------------------------------------------- */
+
+/* The Theatre of the Mind stand-in for the system's scrolling combat text, which
+ * draws over tokens that aren't on screen here. Appended to the portrait wrapper
+ * and removed on animationend. `pointer-events: none` keeps it off Ginzzzu's own
+ * click targets. */
+.dhth-float {
+  position: absolute;
+  left: 50%;
+  bottom: 68%;
+  z-index: 100;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  /* Readable against any portrait art, light or dark. The dark outline does the
+   * work that a thin drop shadow can't at this weight. */
+  text-shadow:
+    0 0 3px rgb(0 0 0 / 100%),
+    0 0 7px rgb(0 0 0 / 90%),
+    0 2px 4px rgb(0 0 0 / 100%);
+}
+
+/* Direction carries the same meaning as colour, so the three tones stay
+ * tellable apart for viewers who can't separate the hues. */
+.dhth-float--rise {
+  animation: dhth-float-rise 2800ms ease-out 1 forwards;
+}
+
+.dhth-float--sink {
+  animation: dhth-float-sink 2800ms ease-out 1 forwards;
+}
+
+.dhth-float--harm {
+  color: rgb(255 120 110);
+}
+
+/* Stress lands alongside hit point damage constantly — a colour of its own is
+ * what keeps "I took 2 HP" and "I took a Stress" from blurring together. */
+.dhth-float--stress {
+  color: rgb(125 185 255);
+}
+
+.dhth-float--help {
+  color: rgb(130 235 160);
+}
+
+/* Travel is in `em`, so it stays proportional to the text — resize the float by
+ * changing `font-size` alone and the motion follows. */
+@keyframes dhth-float-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0.25em) scale(0.85);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.15);
+  }
+  20% {
+    transform: translate(-50%, -0.15em) scale(1);
+  }
+  /* Hold near full opacity most of the way, so the number is legible for longer
+   * than it is in motion. */
+  70% {
+    opacity: 1;
+    transform: translate(-50%, -1em) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -1.65em) scale(1);
+  }
+}
+
+@keyframes dhth-float-sink {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -0.25em) scale(0.85);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.15);
+  }
+  20% {
+    transform: translate(-50%, 0.15em) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translate(-50%, 0.8em) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 1.35em) scale(1);
+  }
+}
+
 /* Being aimed at: a cool pulsing rim that reads as a targeting reticle. */
 @keyframes dhth-targeted {
   0% {
@@ -356,6 +568,30 @@
     }
     50% {
       filter: brightness(1.25);
+    }
+  }
+
+  /* The number still has to be readable — hold it in place and fade it instead
+   * of travelling. It stays on screen a little longer to compensate. */
+  .dhth-float--rise,
+  .dhth-float--sink {
+    animation-name: dhth-float-still;
+    animation-duration: 3200ms;
+  }
+
+  @keyframes dhth-float-still {
+    0% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+    8%,
+    80% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
     }
   }
 }

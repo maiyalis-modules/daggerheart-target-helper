@@ -42,7 +42,9 @@ declare global {
     id: string;
     uuid: string;
     /** Present for unlinked/scene actors; null for linked world actors. */
-    token?: { id: string } | null;
+    token?: { id: string; disposition?: number } | null;
+    /** The linked-actor stand-in the system falls back to for disposition. */
+    prototypeToken?: { disposition?: number } | null;
   }
 
   /**
@@ -56,7 +58,14 @@ declare global {
     target?: DhActionTarget | null;
     actor?: DhActor | null;
     item?: { uuid?: string; name?: string } | null;
-    use(event: Event | null, configOptions?: AnyObject): Promise<unknown>;
+    /**
+     * Resolves to the finished config, or `undefined` if the action bailed —
+     * `prepareConfig` falsy, `preUseAction` returning false, the roll dialog
+     * dismissed, or a workflow part returning false. That makes the return value
+     * a reliable "did this commit?" signal, which the guard uses to decide
+     * whether to roll back the targets it applied.
+     */
+    use(event: Event | null, configOptions?: AnyObject): Promise<DhActionConfig | undefined>;
   }
 
   /**

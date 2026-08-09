@@ -31,7 +31,15 @@ declare global {
     id: string;
     name: string;
     document: TokenDocument;
-    actor?: ({ id: string; uuid: string; img: string } & AnyObject) | null;
+    actor?:
+      | ({
+          id: string;
+          uuid: string;
+          img: string;
+          /** Status effect ids currently applied — conditions live here. */
+          statuses?: Set<string>;
+        } & AnyObject)
+      | null;
     /** Whether the token is currently drawn — deliberately NOT used for
      * filtering targets, since ToTM tokens are often off-screen. */
     visible?: boolean;
