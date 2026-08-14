@@ -151,6 +151,11 @@ export class TargetPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
   private onPick(tokenId: string | undefined): void {
     if (!tokenId) return;
 
+    // Belt and braces: the button already carries `disabled`, but a target out
+    // of the action's range must never be selectable, full stop.
+    const target = this.targets.find((candidate) => candidate.id === tokenId);
+    if (!target || !target.inRange) return;
+
     // Single-target actions are the common case: one click picks and commits.
     if (this.max <= 1) {
       this.settle([tokenId]);
@@ -182,7 +187,10 @@ export class TargetPickerApp extends HandlebarsApplicationMixin(ApplicationV2) {
     const rows = this.targets.map((target) => ({
       ...target,
       selected: this.selected.has(target.id),
-      disabled: atCap && !this.selected.has(target.id),
+      // Out of range always wins: capping never re-enables a target the
+      // action simply can't reach.
+      disabled: (atCap && !this.selected.has(target.id)) || !target.inRange,
+      outOfRange: !target.inRange,
       hasDifficulty: target.difficulty !== null && target.difficulty !== undefined,
       hasEvasion: target.evasion !== null && target.evasion !== undefined,
       isDefeated: target.defeated !== null,

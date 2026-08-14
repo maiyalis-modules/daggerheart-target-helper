@@ -56,6 +56,8 @@ declare global {
     name: string;
     actionType?: string;
     target?: DhActionTarget | null;
+    /** Range band (melee/veryClose/close/far/veryFar), from `RangeField`. Blank means no restriction. */
+    range?: string | null;
     actor?: DhActor | null;
     item?: { uuid?: string; name?: string } | null;
     /**

@@ -6,6 +6,7 @@
  * action workflow will accept once they're targeted.
  */
 import { activeConditions, defeatedBadge, type ConditionBadge } from "../services/actor-state.js";
+import { findActingToken, isWithinRange } from "./range.js";
 
 /** Which side of the fight a candidate is on, relative to the acting actor. */
 export type TargetGroup = "enemy" | "neutral" | "ally";
@@ -17,6 +18,8 @@ export interface TargetCandidate extends DhFormattedTarget {
   defeated: ConditionBadge | null;
   /** Conditions other than defeat, sorted by name. */
   conditions: ConditionBadge[];
+  /** Whether the target is within the action's declared range band of the actor's token. */
+  inRange: boolean;
 }
 
 /**
@@ -91,6 +94,7 @@ export function collectCandidates(action: DhAction): TargetCandidate[] {
   const targetField = getTargetField();
   const actor = action.actor ?? null;
   const type = action.target?.type ?? null;
+  const actingToken = findActingToken(actor);
 
   const candidates = tokens.filter((token) => {
     if (!token.actor) return false;
@@ -119,6 +123,7 @@ export function collectCandidates(action: DhAction): TargetCandidate[] {
     group: groupFor(actor, token, targetField),
     defeated: defeatedBadge(token.actor),
     conditions: activeConditions(token.actor),
+    inRange: isWithinRange(actingToken, token, action.range),
   }));
 
   // Downed targets sink to the bottom of their section: still pickable (finishing

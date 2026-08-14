@@ -231,6 +231,27 @@
   white-space: nowrap;
 }
 
+/* Range-gated: outside the acting action's declared range band. Unlike
+ * `--defeated`, this always carries the `disabled` attribute — there's no
+ * valid reason to pick it, so it gets the same greyed/unclickable treatment
+ * as a capped-out row (`.totm-target-btn:disabled`), plus its own tag so the
+ * *reason* it's unavailable reads at a glance. */
+.totm-target-btn--out-of-range .totm-target-btn__portrait {
+  filter: grayscale(60%);
+}
+
+.totm-target-btn__out-of-range {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid rgb(120 135 150 / 70%);
+  border-radius: 2px;
+  background: rgb(120 135 150 / 18%);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
 .totm-target-btn__condition {
   width: 18px;
   height: 18px;

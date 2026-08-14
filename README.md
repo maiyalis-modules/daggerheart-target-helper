@@ -1,4 +1,4 @@
-# Eryndor: Target Helper
+# Maiyalis: Target Helper
 
 Targeting quality-of-life tools for [Daggerheart](https://foundryvtt.com/packages/daggerheart) games in Foundry VTT v14.
 
@@ -11,7 +11,7 @@ Early scaffold. The module loads, registers a client setting, and preloads its t
 **From manifest URL**
 
 ```
-https://github.com/brenton/daggerheart-target-helper/releases/latest/download/module.json
+https://github.com/maiyalis-modules/daggerheart-target-helper/releases/latest/download/module.json
 ```
 
 **For local development**

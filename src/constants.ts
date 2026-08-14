@@ -1,7 +1,7 @@
 /** Shared, immutable identifiers for the module. */
 
 export const MODULE_ID = "daggerheart-target-helper" as const;
-export const MODULE_TITLE = "Eryndor: Target Helper" as const;
+export const MODULE_TITLE = "Maiyalis: Target Helper" as const;
 
 /** Prefix used for all console logging so output is easy to filter. */
 export const LOG_PREFIX = `${MODULE_TITLE} |` as const;

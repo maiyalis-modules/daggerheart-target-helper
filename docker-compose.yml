@@ -1,4 +1,4 @@
-# Containerized build toolchain for the Eryndor: Target Helper module.
+# Containerized build toolchain for the Maiyalis: Target Helper module.
 #
 # FoundryVTT runs natively on the host; these services only compile
 # src/*.ts -> dist/module.js, which lands back on the host via the bind mount.

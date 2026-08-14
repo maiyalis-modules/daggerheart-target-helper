@@ -1,5 +1,5 @@
 {
-  "DHTH.ModuleTitle": "Eryndor: Target Helper",
+  "DHTH.ModuleTitle": "Maiyalis: Target Helper",
 
   "DHTH.Panel.Title": "Targets",
   "DHTH.Panel.NoTargets": "No tokens targeted.",
@@ -13,6 +13,7 @@
   "DHTH.Picker.Group.Neutral": "Neutral",
   "DHTH.Picker.Group.Allies": "Allies",
   "DHTH.Picker.Defeated": "Defeated",
+  "DHTH.Picker.OutOfRange": "Out of Range",
   "DHTH.Picker.HintSingle": "No target selected. Choose one to continue.",
   "DHTH.Picker.HintMulti": "No target selected. Choose your targets, then confirm.",
   "DHTH.Picker.Selected": "{count} selected",

@@ -43,6 +43,8 @@ declare global {
     /** Whether the token is currently drawn — deliberately NOT used for
      * filtering targets, since ToTM tokens are often off-screen. */
     visible?: boolean;
+    /** Core Foundry method: measured distance to another token, in scene grid units. */
+    distanceTo(other: Token, config?: AnyObject): number;
   }
 
   /** The active canvas. `tokens` is undefined until the canvas is ready. */

@@ -11,7 +11,7 @@
             <li class="totm-target-dialog__row">
               <button
                 type="button"
-                class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}{{#if target.isDefeated}} totm-target-btn--defeated{{/if}}"
+                class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}{{#if target.isDefeated}} totm-target-btn--defeated{{/if}}{{#if target.outOfRange}} totm-target-btn--out-of-range{{/if}}"
                 data-dhth="pick"
                 data-token-id="{{target.id}}"
                 {{#if target.disabled}}disabled{{/if}}
@@ -24,6 +24,9 @@
                   <span class="totm-target-btn__tags">
                     {{#if target.isDefeated}}
                       <span class="totm-target-btn__defeated">{{target.defeatedLabel}}</span>
+                    {{/if}}
+                    {{#if target.outOfRange}}
+                      <span class="totm-target-btn__out-of-range">{{localize "DHTH.Picker.OutOfRange"}}</span>
                     {{/if}}
                     {{#if target.hasConditions}}
                       {{#each target.conditions as |condition|}}

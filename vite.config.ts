@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 /**
- * Vite build for the Eryndor: Target Helper FoundryVTT module.
+ * Vite build for the Maiyalis: Target Helper FoundryVTT module.
  *
  * The whole project folder *is* the module: `module.json`, `lang/`, `styles/`,
  * and `templates/` are served from the repository root, and Vite compiles the

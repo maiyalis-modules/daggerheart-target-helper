@@ -1,5 +1,5 @@
 /**
- * Eryndor: Target Helper — module entry point.
+ * Maiyalis: Target Helper — module entry point.
  *
  * Wires the module into FoundryVTT's lifecycle hooks. Business logic lives in
  * sibling modules under `src/`; this file only bootstraps.
