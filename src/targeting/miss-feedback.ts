@@ -13,6 +13,15 @@
  *
  * A *no-target* action (terrain, an object) has an empty `targets` list, so it
  * never matches here and keeps its damage button — which is the intended split.
+ *
+ * **Hits are read from the system, never from the message's own target rows.**
+ * `config.targets[].hit` exists during the workflow (daggerheart.js:40922) but
+ * `DHActorRoll`'s schema (daggerheart.js:17130) keeps only id/actorId/name/img/
+ * difficulty/evasion — `hit` is stripped on the way into the document. Testing it
+ * there reads `undefined`, i.e. "missed", for every target of every attack, which
+ * is what used to pull a hit target's portrait down on the miss linger before the
+ * damage step had happened. The card itself derives hits at render time, and
+ * `system.currentHitTargets` (daggerheart.js:17211) is that same derivation.
  */
 import {
   DAMAGE_ROLL_BUTTON_SELECTOR,
@@ -26,9 +35,10 @@ import { worldActorIdFromUuid } from "../services/actor-ids.js";
 import { armLinger } from "../services/portrait-bridge.js";
 import { playFx } from "../services/portrait-fx.js";
 
+/** A row of `system.targets`. Note there is no `hit` — see the note above. */
 interface MessageTarget {
+  id: string;
   actorId: string;
-  hit?: boolean;
 }
 
 interface AttackMessageSystem {
@@ -36,8 +46,16 @@ interface AttackMessageSystem {
   hasTarget?: boolean;
   hasDamage?: boolean;
   hasHealing?: boolean;
-  hasHitTarget?: boolean;
   targets?: MessageTarget[];
+  /**
+   * Which tab of the card's target section is showing. Set in the constructor
+   * (daggerheart.js:17114) and flipped when the GM switches to "selected tokens",
+   * where `currentHitTargets` reports the controlled tokens instead and its ids
+   * no longer line up with `targets`.
+   */
+  targeting?: { usingSelect?: boolean };
+  /** The targets the roll actually beat (daggerheart.js:17211). */
+  currentHitTargets?: { id?: string }[];
 }
 
 interface ChatMessageLike {
@@ -83,28 +101,56 @@ function onPreDamageAction(_action: DhAction, config: DhActionConfig): boolean |
   }
 }
 
-/** True when this is a damaging attack that was rolled and hit nothing. */
-function isTargetedMiss(system: AttackMessageSystem | undefined): system is AttackMessageSystem {
+/** True when this is a damaging attack that was rolled against chosen targets. */
+function isTargetedAttack(system: AttackMessageSystem | undefined): system is AttackMessageSystem {
   return Boolean(
     system?.hasRoll &&
       system.hasTarget &&
       system.hasDamage &&
       !system.hasHealing &&
-      (system.targets?.length ?? 0) > 0 &&
-      !system.hasHitTarget,
+      (system.targets?.length ?? 0) > 0,
   );
+}
+
+/**
+ * The targets this attack missed, or `null` when the system can't tell us.
+ *
+ * Bailing on `null` is deliberate: without a trustworthy hit list the safe move
+ * is to leave the card and the portraits exactly as they are — a missing block
+ * flash costs nothing, whereas guessing "missed" strips a live damage button and
+ * drops a portrait mid-attack.
+ */
+function missedTargets(system: AttackMessageSystem): MessageTarget[] | null {
+  // The GM is looking at the "selected tokens" tab, where the system reports the
+  // controlled tokens rather than the rolled-against ones. Their ids don't line
+  // up with `targets`, so we have nothing to compare and stay out of it.
+  if (system.targeting?.usingSelect) return null;
+
+  const hits = system.currentHitTargets;
+  if (!Array.isArray(hits)) return null;
+
+  const hitIds = new Set(hits.map((target) => target.id));
+  return (system.targets ?? []).filter((target) => !hitIds.has(target.id));
 }
 
 function onRenderChatMessage(message: ChatMessageLike, element: HTMLElement): void {
   try {
     if (game.settings.get(MODULE_ID, SETTINGS.missFeedback) !== true) return;
-    if (!isTargetedMiss(message.system)) return;
+    if (!isTargetedAttack(message.system)) return;
 
-    // Idempotent: the system re-adds the button on each render, so strip it each
-    // time rather than trusting a one-shot removal.
-    element
-      .querySelectorAll(DAMAGE_ROLL_BUTTON_SELECTOR)
-      .forEach((button) => button.remove());
+    const missed = missedTargets(message.system);
+    if (missed === null) return;
+
+    // Only a total whiff loses the damage prompt: with anything still standing
+    // there is damage to roll. Idempotent, because the system re-adds the button
+    // on each render — so strip it every time rather than trusting a one-shot.
+    if (missed.length === (message.system.targets?.length ?? 0)) {
+      element
+        .querySelectorAll(DAMAGE_ROLL_BUTTON_SELECTOR)
+        .forEach((button) => button.remove());
+    }
+
+    if (missed.length === 0) return;
 
     // Flash once per message, even though render fires repeatedly.
     const id = message.id;
@@ -112,13 +158,14 @@ function onRenderChatMessage(message: ChatMessageLike, element: HTMLElement): vo
     flashed.add(id);
 
     const isGM = game.user?.isGM === true;
-    for (const target of message.system?.targets ?? []) {
-      if (target.hit) continue;
+    for (const target of missed) {
       const actorId = worldActorIdFromUuid(target.actorId);
       if (!actorId) continue;
       void playFx(actorId, "blocked");
-      // The 45s safety window was armed at targeting; now that the exchange is
-      // over, hand it to the miss linger. GM-only (the raise is GM-authoritative).
+      // Nothing is coming for this one, so the 45s window armed at targeting can
+      // hand over to the miss linger. Targets that *were* hit keep that window
+      // and drop on the short linger once damage lands, which is the whole point
+      // of splitting this per target. GM-only — the raise is GM-authoritative.
       if (isGM) armLinger(actorId, MISS_LINGER_MS);
     }
   } catch (error) {

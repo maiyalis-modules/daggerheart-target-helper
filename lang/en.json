@@ -20,6 +20,10 @@
   "DHTH.Picker.SelectedCapped": "{count} of {max} selected",
   "DHTH.Picker.NoTarget": "Attack Without a Target",
 
+  "DHTH.Survey.Title": "Distances from {name}",
+  "DHTH.Survey.Hint": "Everything on this scene and how far away it is. Nothing here is targeted — this is just a look around.",
+  "DHTH.Survey.Close": "Close",
+
   "DHTH.Notify.NoCandidates": "No valid targets available in this scene.",
   "DHTH.Notify.ReplayFailed": "Targets were set, but the action could not be re-run. Please trigger it again.",
 

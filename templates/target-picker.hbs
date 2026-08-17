@@ -11,10 +11,15 @@
             <li class="totm-target-dialog__row">
               <button
                 type="button"
-                class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}{{#if target.isDefeated}} totm-target-btn--defeated{{/if}}{{#if target.outOfRange}} totm-target-btn--out-of-range{{/if}}"
-                data-dhth="pick"
+                class="totm-target-btn{{#if target.selected}} totm-target-btn--selected{{/if}}{{#if target.isDefeated}} totm-target-btn--defeated{{/if}}{{#if target.outOfRange}} totm-target-btn--out-of-range{{/if}}{{#if target.rowStatic}} totm-target-btn--static{{/if}}"
+                data-dhth="{{target.rowAction}}"
                 data-token-id="{{target.id}}"
                 {{#if target.disabled}}disabled{{/if}}
+                {{!-- Survey rows: inert, but never `disabled` — that would grey
+                     out the list this window exists to show. `aria-disabled`
+                     says so without the styling, and -1 keeps them out of the
+                     tab order so the only stop is the Close button. --}}
+                {{#if target.rowStatic}}aria-disabled="true" tabindex="-1"{{/if}}
               >
                 <img class="totm-target-btn__portrait" src="{{target.img}}" alt="" />
 
@@ -22,6 +27,15 @@
                   <span class="totm-target-btn__name">{{target.name}}</span>
 
                   <span class="totm-target-btn__tags">
+                    {{#if target.hasRange}}
+                      {{!-- style carries the whole declaration or nothing at all;
+                           see rangeStyle in target-picker-app.ts. --}}
+                      <span
+                        class="totm-target-btn__range"
+                        style="{{target.rangeStyle}}"
+                        title="{{target.rangeTitle}}"
+                      >{{target.rangeLabel}}</span>
+                    {{/if}}
                     {{#if target.isDefeated}}
                       <span class="totm-target-btn__defeated">{{target.defeatedLabel}}</span>
                     {{/if}}
@@ -63,14 +77,16 @@
     {{/each}}
   </div>
 
-  <button
-    type="button"
-    class="totm-target-btn totm-target-btn--no-target"
-    data-dhth="no-target"
-  >
-    <span class="totm-target-btn__no-target-icon"><i class="fa-solid fa-ban"></i></span>
-    <span class="totm-target-btn__name">{{localize "DHTH.Picker.NoTarget"}}</span>
-  </button>
+  {{#if canPick}}
+    <button
+      type="button"
+      class="totm-target-btn totm-target-btn--no-target"
+      data-dhth="no-target"
+    >
+      <span class="totm-target-btn__no-target-icon"><i class="fa-solid fa-ban"></i></span>
+      <span class="totm-target-btn__name">{{localize "DHTH.Picker.NoTarget"}}</span>
+    </button>
+  {{/if}}
 
   <footer class="totm-target-dialog__footer">
     {{#if multi}}
@@ -78,7 +94,7 @@
     {{/if}}
     <div class="totm-target-dialog__actions">
       <button type="button" class="totm-target-dialog__btn" data-dhth="cancel">
-        {{localize "DHTH.Picker.Cancel"}}
+        {{dismissLabel}}
       </button>
       {{#if multi}}
         <button

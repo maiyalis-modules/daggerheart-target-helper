@@ -49,7 +49,15 @@ declare global {
 
   /** The active canvas. `tokens` is undefined until the canvas is ready. */
   const canvas: {
-    scene?: { id: string } | null;
+    scene?:
+      | ({
+          id: string;
+          /** Grid config — `units` is the label distances are measured in ("ft"). */
+          grid?: { units?: string } & AnyObject;
+          /** Where the system keeps this scene's range-measurement override. */
+          flags?: AnyObject;
+        } & AnyObject)
+      | null;
     tokens?: {
       placeables: Token[];
       get(id: string): Token | undefined;

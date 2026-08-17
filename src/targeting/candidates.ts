@@ -6,7 +6,13 @@
  * action workflow will accept once they're targeted.
  */
 import { activeConditions, defeatedBadge, type ConditionBadge } from "../services/actor-state.js";
-import { findActingToken, isWithinRange } from "./range.js";
+import {
+  bandFor,
+  distanceBetween,
+  findActingToken,
+  isWithinRange,
+  type DistanceBand,
+} from "./range.js";
 
 /** Which side of the fight a candidate is on, relative to the acting actor. */
 export type TargetGroup = "enemy" | "neutral" | "ally";
@@ -20,6 +26,14 @@ export interface TargetCandidate extends DhFormattedTarget {
   conditions: ConditionBadge[];
   /** Whether the target is within the action's declared range band of the actor's token. */
   inRange: boolean;
+  /**
+   * Measured distance from the acting token, in scene grid units. `null` when
+   * there's nothing to measure from — the actor has no token on this scene —
+   * which is exactly when {@link inRange} defaults to true.
+   */
+  distance: number | null;
+  /** The band {@link distance} falls in. `null` whenever the distance is. */
+  band: DistanceBand | null;
 }
 
 /**
@@ -83,18 +97,26 @@ function groupFor(
   return "neutral";
 }
 
+/** What the list is being built for. See the two wrappers below. */
+interface CandidateOptions {
+  /** The acting actor: drives grouping and the system's disposition filter. */
+  actor: DhActor | null;
+  /** The token distances are measured from; null when the actor has none placed. */
+  actingToken: Token | null;
+  /** Disposition filter. `null` or `"any"` offers everyone. */
+  targetType: string | null;
+  /** Range band to gate on. `null` gates nothing, which is survey mode's case. */
+  range: string | null;
+}
+
 /**
- * Collect valid, pickable targets in the active scene for a given action.
- *
- * @param action The action being used, whose `target.type` drives disposition filtering.
- * @returns Candidates sorted by name, the downed ones last. Empty if nothing valid is present.
+ * The shared list build. Both callers want the same rows measured the same way;
+ * they differ only in whether a disposition filter and a range gate apply.
  */
-export function collectCandidates(action: DhAction): TargetCandidate[] {
+function buildCandidates(options: CandidateOptions): TargetCandidate[] {
+  const { actor, actingToken, targetType: type, range } = options;
   const tokens = canvas.tokens?.placeables ?? [];
   const targetField = getTargetField();
-  const actor = action.actor ?? null;
-  const type = action.target?.type ?? null;
-  const actingToken = findActingToken(actor);
 
   const candidates = tokens.filter((token) => {
     if (!token.actor) return false;
@@ -118,13 +140,18 @@ export function collectCandidates(action: DhAction): TargetCandidate[] {
     return targetField.isTargetFriendly(actor, token, type);
   });
 
-  const formatted = candidates.map((token) => ({
-    ...(targetField ? targetField.formatTarget(token) : fallbackFormat(token)),
-    group: groupFor(actor, token, targetField),
-    defeated: defeatedBadge(token.actor),
-    conditions: activeConditions(token.actor),
-    inRange: isWithinRange(actingToken, token, action.range),
-  }));
+  const formatted = candidates.map((token) => {
+    const distance = distanceBetween(actingToken, token);
+    return {
+      ...(targetField ? targetField.formatTarget(token) : fallbackFormat(token)),
+      group: groupFor(actor, token, targetField),
+      defeated: defeatedBadge(token.actor),
+      conditions: activeConditions(token.actor),
+      inRange: isWithinRange(distance, range),
+      distance,
+      band: bandFor(distance),
+    };
+  });
 
   // Downed targets sink to the bottom of their section: still pickable (finishing
   // a blow, or healing someone up), just never the first thing under the cursor.
@@ -133,4 +160,41 @@ export function collectCandidates(action: DhAction): TargetCandidate[] {
     return a.name.localeCompare(b.name);
   });
   return formatted;
+}
+
+/**
+ * Collect valid, pickable targets in the active scene for a given action.
+ *
+ * @param action The action being used, whose `target.type` drives disposition filtering.
+ * @returns Candidates sorted by name, the downed ones last. Empty if nothing valid is present.
+ */
+export function collectCandidates(action: DhAction): TargetCandidate[] {
+  const actor = action.actor ?? null;
+  return buildCandidates({
+    actor,
+    actingToken: findActingToken(actor),
+    targetType: action.target?.type ?? null,
+    range: action.range ?? null,
+  });
+}
+
+/**
+ * Collect everything on the scene as seen *from* one token — the read-only list
+ * behind the range survey, where nothing is being targeted and so nothing is
+ * filtered out or gated.
+ *
+ * Deliberately passes no `targetType` and no `range`: a survey is asking "what's
+ * around me and how far", so every token is offered and none is greyed as out of
+ * reach. The grouping into enemies/neutral/allies is kept, since that's what
+ * makes the list scannable.
+ *
+ * @param source The token to measure from — one the viewer owns.
+ */
+export function surveyCandidates(source: Token): TargetCandidate[] {
+  return buildCandidates({
+    actor: (source.actor as DhActor | null | undefined) ?? null,
+    actingToken: source,
+    targetType: null,
+    range: null,
+  });
 }

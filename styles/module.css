@@ -113,12 +113,34 @@
   letter-spacing: 0.08em;
 }
 
+/* The stripe is an inset shadow, not a `border-left`, and that is load-bearing.
+ * As a border it sat at `.totm-target-group .totm-target-btn` specificity (0,2,0)
+ * and so outranked `.totm-target-btn--selected` (0,1,0) — the selected row's
+ * highlight painted three sides and stopped dead at the accent, which reads as a
+ * broken border rather than a stripe. Shadows and borders don't compete, so the
+ * state colour now goes all the way around and the stripe survives every state
+ * instead of being erased by hover.
+ *
+ * The padding matches the stripe so nothing sits under it, and it survives the
+ * `padding` shorthand in `.totm-target-btn` below on specificity (0,2,0 beats
+ * 0,1,0) rather than source order — don't "tidy" this into that shorthand. */
 .totm-target-group .totm-target-btn {
-  border-left: 3px solid var(--totm-group-accent);
+  --totm-row-stripe: 3px 0 0 0 var(--totm-group-accent);
+  padding-left: calc(0.6rem + 3px);
 }
 
-/* Large, click-friendly rows — these get hit fast, mid-combat. */
+/* Large, click-friendly rows — these get hit fast, mid-combat.
+ *
+ * The two shadow slots are set by other rules (the group stripe above, the
+ * selected ring below) and default to nothing. Composing them through custom
+ * properties keeps them independent: a plain `box-shadow` in either place would
+ * replace the other, and whichever won would depend on selector specificity. */
 .totm-target-btn {
+  --totm-row-stripe: 0 0 0 0 transparent;
+  --totm-row-ring: 0 0 0 0 transparent;
+  box-shadow:
+    inset var(--totm-row-stripe),
+    inset var(--totm-row-ring);
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -148,20 +170,71 @@
   transform: translateY(1px);
 }
 
+/* Core styles `button:focus` at (0,1,1) — `outline: 1px solid` *plus*
+ * `box-shadow: 0 0 4px` — which outranks every single-class rule here. Two
+ * things went wrong as a result, both of which look like our bug:
+ *
+ *   1. `.totm-target-dialog__list` sets `overflow-y: auto`, and a non-visible
+ *      value on one axis forces the other to `auto` too. So the glow and outline
+ *      were clipped **left and right** while surviving top and bottom — a
+ *      clicked row grew a bright bar across it that stopped dead at the edges.
+ *   2. Core's `box-shadow` replaced ours, so the focused row lost its group
+ *      stripe as well.
+ *
+ * Both are fixed by drawing focus *inside* the row, where there is nothing to
+ * clip it, and by keeping the stripe in the same declaration. Only
+ * `:focus-visible` gets a ring — a plain mouse click on a button doesn't match
+ * it, which is what stopped a clicked row looking selected. */
+.totm-target-btn:focus,
 .totm-target-btn:focus-visible {
-  outline: 2px solid var(--color-shadow-primary, #ff6400);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow:
+    inset var(--totm-row-stripe),
+    inset var(--totm-row-ring);
+}
+
+.totm-target-btn:focus-visible {
+  --totm-row-ring: 0 0 0 2px var(--color-shadow-primary, #ff6400);
 }
 
 .totm-target-btn--selected {
   border-color: var(--color-shadow-primary, #ff6400);
   background: rgb(255 100 0 / 18%);
-  box-shadow: inset 0 0 0 1px var(--color-shadow-primary, #ff6400);
+  --totm-row-ring: 0 0 0 1px var(--color-shadow-primary, #ff6400);
 }
 
 .totm-target-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* A range survey's rows: everything the picker shows, none of what it does.
+ *
+ * Deliberately *not* `disabled` — that greys the whole list to 40%, and reading
+ * the list is the entire point of the window. The row is already inert three
+ * other ways (empty `data-dhth`, `aria-disabled`, and `onPick` refusing in
+ * survey mode); what's left is to stop it *looking* clickable, so every hover
+ * and press affordance is put back to the resting state. The selectors carry
+ * `:hover`/`:active` purely to match the specificity of the rules they undo. */
+.totm-target-btn--static,
+.totm-target-btn--static:hover:not(:disabled),
+.totm-target-btn--static:active:not(:disabled) {
+  /* The decisive one: with no pointer events the row cannot be hovered,
+   * pressed, or focused by a click at all, so none of core's `button:*` states
+   * can fire on it. The rules below are what's left over for a row that somehow
+   * does get a state anyway. */
+  pointer-events: none;
+  cursor: default;
+  border-color: var(--color-border-light-tertiary, rgb(0 0 0 / 25%));
+  background: var(--color-bg-option, rgb(0 0 0 / 5%));
+  transform: none;
+}
+
+/* …except the distance chip, whose tooltip is the one thing worth clicking
+ * through for. Needs saying explicitly twice over: the row above turned pointer
+ * events off, and core sets `button > * { pointer-events: none }` besides. */
+.totm-target-btn--static .totm-target-btn__range {
+  pointer-events: auto;
 }
 
 .totm-target-btn__portrait {
@@ -229,6 +302,31 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   white-space: nowrap;
+}
+
+/* How far away this candidate is, tinted by which range band that falls in —
+ * the same palette Daggerheart: Distances draws its rings with, so the chip and
+ * the ring the player just saw on the canvas agree (see ui/range-colors.ts).
+ *
+ * The channels arrive as an inline `--dhth-range-rgb`, and the fallback here is
+ * what covers Very Far and a palette that couldn't be read. That only works
+ * because the row emits *no* declaration in those cases rather than an empty
+ * one — an empty custom property is still a declared one, and would skip this
+ * fallback entirely.
+ *
+ * Border and background carry the hue; the text stays at the inherited colour,
+ * so a pale palette entry can never turn the label unreadable. Deliberately not
+ * uppercased like the status tags beside it — this one is a measurement, and
+ * "30 FT" reads worse than "30 ft". */
+.totm-target-btn__range {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid rgb(var(--dhth-range-rgb, 120 135 150) / 85%);
+  border-radius: 2px;
+  background: rgb(var(--dhth-range-rgb, 120 135 150) / 22%);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Range-gated: outside the acting action's declared range band. Unlike
