@@ -43,7 +43,8 @@ src/
   module.ts            entry point — Hooks.once("init"|"ready")
   constants.ts         MODULE_ID, MODULE_TITLE, LOG_PREFIX, SETTINGS, TEMPLATES, hook names
   settings.ts          game.settings registration (called from init)
-  targeting/           the guard, candidate list, range measurement, hit/miss feedback
+  api.ts               the public API published on the module entry (init)
+  targeting/           the guard, candidate list, range measurement + origin, hit/miss feedback
   ui/                  the picker window and its presentation helpers
   services/            cross-cutting helpers (portrait bridge, sockets, actor state)
   types/               minimal ambient shims — foundry.d.ts and daggerheart.d.ts
@@ -192,6 +193,34 @@ space-separated channels. **The row emits the whole declaration or an empty
 custom property is still a *declared* one, so `var(--dhth-range-rgb, 120 135 150)`
 in `styles/module.css` would skip its fallback and compute to nothing; that
 fallback is what covers Very Far and an unreadable palette.
+
+## Measuring from someone other than the roller
+
+`src/targeting/range-origin.ts` is the one seam where the token an action is
+measured *from* is not the acting actor's own. Another module registers a
+resolver through the public API (`api.registerRangeOrigin`), it is called with
+each action reaching the picker, and it answers with a `Token`, a token id, a
+token uuid, or `null` to decline.
+
+- **Written for animal companions.** A Beastbound ranger commanding their
+  companion makes the Spellcast Roll themselves, so the roll, the Hope and every
+  bonus belong to the ranger — but the claws start where the companion is
+  standing. `eryndor-essentials`' Companion feature is the caller.
+- **Only the distance moves.** Grouping into enemies/allies and the system's
+  disposition filter stay with `action.actor`. Who counts as an enemy is the
+  commanding character's question; how far away they are is the companion's.
+- **Declining is free, and so is a bad answer.** A token that isn't on the
+  current scene falls back to `findActingToken`, so a companion left off the
+  battle map measures from its partner rather than not at all. A resolver that
+  throws loses its own override and nothing else.
+- **The origin token is dropped from the candidate list**, alongside the acting
+  actor's — a companion is not a target of its own attack. Compared by placeable
+  rather than by actor, since two tokens of one actor are two creatures here.
+- Registry, not a property on the action: the system's Actions are `DataModel`s,
+  a stray property on one is outside its schema and survives no round trip, and
+  an undocumented convention spanning two repositories has nothing holding it
+  together. Adding to `TargetHelperApi` means editing the caller too — that's the
+  point.
 
 ## Foundry gotchas (apply when you build the features)
 

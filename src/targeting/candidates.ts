@@ -13,6 +13,7 @@ import {
   isWithinRange,
   type DistanceBand,
 } from "./range.js";
+import { resolveRangeOrigin } from "./range-origin.js";
 
 /** Which side of the fight a candidate is on, relative to the acting actor. */
 export type TargetGroup = "enemy" | "neutral" | "ally";
@@ -101,7 +102,15 @@ function groupFor(
 interface CandidateOptions {
   /** The acting actor: drives grouping and the system's disposition filter. */
   actor: DhActor | null;
-  /** The token distances are measured from; null when the actor has none placed. */
+  /**
+   * The token distances are measured from; null when the actor has none placed.
+   *
+   * Usually the acting actor's own token, but not always — see
+   * `range-origin.ts`, where a module can declare that an action reaches from
+   * somewhere else. Grouping and the disposition filter deliberately stay with
+   * {@link actor}: a companion's claws start at the companion, but who counts as
+   * an enemy is still the commanding character's question.
+   */
   actingToken: Token | null;
   /** Disposition filter. `null` or `"any"` offers everyone. */
   targetType: string | null;
@@ -127,6 +136,13 @@ function buildCandidates(options: CandidateOptions): TargetCandidate[] {
     // Never offer the acting actor its own token. Comparing uuids covers both
     // linked world actors and unlinked scene actors.
     if (actor && token.actor.uuid === actor.uuid) return false;
+
+    // Nor the token the action is measured *from*, when that is someone else —
+    // a companion acting for its partner is no more a target of its own claws
+    // than the partner would be. Compared by token rather than by actor: an
+    // origin is a specific placeable, and two tokens of one actor are two
+    // creatures as far as the picker is concerned.
+    if (token === actingToken) return false;
 
     // NOTE: we deliberately do NOT filter on `token.visible`. Core's own
     // `targetObjects()` does, but Theatre of the Mind tokens are routinely
@@ -172,7 +188,11 @@ export function collectCandidates(action: DhAction): TargetCandidate[] {
   const actor = action.actor ?? null;
   return buildCandidates({
     actor,
-    actingToken: findActingToken(actor),
+    // A declared origin wins, and falling back rather than failing is
+    // deliberate: a companion who isn't on the battle map should leave the
+    // ranger measuring from where they stand, not leave the picker unable to
+    // measure at all.
+    actingToken: resolveRangeOrigin(action) ?? findActingToken(actor),
     targetType: action.target?.type ?? null,
     range: action.range ?? null,
   });
