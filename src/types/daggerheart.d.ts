@@ -83,6 +83,11 @@ declare global {
     /** Set by `prepareBaseConfig` from the action's own damage/healing fields. */
     hasDamage?: boolean;
     hasHealing?: boolean;
+    /**
+     * Whether the action makes an attack roll at all — `!!action.roll?.type`.
+     * False for a `damage` action, whose targets therefore carry no `hit`.
+     */
+    hasRoll?: boolean;
     /** When set, the action forces its own target and ignores user targets. */
     targetUuid?: string | null;
     dialog?: AnyObject;

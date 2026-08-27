@@ -86,11 +86,27 @@ export function registerMissFeedback(): void {
  *
  * Scoped to damaging attacks with targets that all missed. A no-target attack
  * (empty `targets`) is deliberately let through so it can still roll damage.
+ *
+ * So is an action with **no attack roll**, and that one is not an edge case: a
+ * `damage` action ("strike a target of your choice", and every card that simply
+ * deals damage) never rolls against anybody, so `TargetField.formatTarget` gives
+ * its targets no `hit` at all. Without the `hasRoll` guard below, `some(t => t.hit)`
+ * is false for every one of them and this reads a miss into an attack that was
+ * never made — silently, because a `false` from a workflow hook hits
+ * `executeWorkflow`'s bare `return`, which is `undefined` rather than `false`. The
+ * action's own chat card still posts, so nothing looks wrong; the damage simply
+ * never rolls, and every workflow part ordered after damage (cost at 150, uses at
+ * 160) is skipped too, so the resource is not even spent.
+ *
+ * There is no miss to respect here: this rule exists to skip targets an attack
+ * failed to hit, and an action that never rolled cannot have failed to hit.
+ * `isTargetedAttack` below already opens with `hasRoll` for the same reason.
  */
 function onPreDamageAction(_action: DhAction, config: DhActionConfig): boolean | void {
   try {
     if (game.settings.get(MODULE_ID, SETTINGS.missFeedback) !== true) return;
     if (config.hasHealing) return;
+    if (!config.hasRoll) return;
     const targets = config.targets ?? [];
     if (targets.length === 0) return;
     if (targets.some((t) => t.hit)) return;
