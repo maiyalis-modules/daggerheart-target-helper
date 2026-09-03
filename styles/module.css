@@ -74,7 +74,7 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Sections: enemies / neutral / allies                                       */
+/* Sections: enemies / neutral / allies / yourself                            */
 /* -------------------------------------------------------------------------- */
 
 /* Each section carries its own accent, applied to the heading, the rule under
@@ -97,6 +97,13 @@
 
 .totm-target-group--ally {
   --totm-group-accent: rgb(80 165 110);
+}
+
+/* Blue, deliberately outside the enemy/neutral/ally traffic light: you are not a
+ * side of the fight, you're the one choosing. Listed last to match GROUP_ORDER
+ * in target-picker-app.ts, which is the order these actually render in. */
+.totm-target-group--self {
+  --totm-group-accent: rgb(110 150 215);
 }
 
 .totm-target-group__heading {
@@ -543,50 +550,59 @@
 }
 
 /* Travel is in `em`, so it stays proportional to the text — resize the float by
- * changing `font-size` alone and the motion follows. */
+ * changing `font-size` alone and the motion follows.
+ *
+ * Every transform ends on `--dhth-float-flip`, set to -1 by `runFloat` when the
+ * portrait it is drawn on is mirrored — because the number is a child of the
+ * wrapper and would otherwise read backwards on a portrait turned to face its
+ * attacker, or on one the GM flipped by hand. It has to live inside the keyframes:
+ * an animated `transform` replaces anything the base rule declares. Position is
+ * unaffected either way — `left: 50%` with `translateX(-50%)` centres the number
+ * before the mirror and stays centred after it, so this only turns the glyphs back
+ * the right way round. */
 @keyframes dhth-float-rise {
   0% {
     opacity: 0;
-    transform: translate(-50%, 0.25em) scale(0.85);
+    transform: translate(-50%, 0.25em) scale(0.85) scaleX(var(--dhth-float-flip, 1));
   }
   10% {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1.15);
+    transform: translate(-50%, 0) scale(1.15) scaleX(var(--dhth-float-flip, 1));
   }
   20% {
-    transform: translate(-50%, -0.15em) scale(1);
+    transform: translate(-50%, -0.15em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
   /* Hold near full opacity most of the way, so the number is legible for longer
    * than it is in motion. */
   70% {
     opacity: 1;
-    transform: translate(-50%, -1em) scale(1);
+    transform: translate(-50%, -1em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, -1.65em) scale(1);
+    transform: translate(-50%, -1.65em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
 }
 
 @keyframes dhth-float-sink {
   0% {
     opacity: 0;
-    transform: translate(-50%, -0.25em) scale(0.85);
+    transform: translate(-50%, -0.25em) scale(0.85) scaleX(var(--dhth-float-flip, 1));
   }
   10% {
     opacity: 1;
-    transform: translate(-50%, 0) scale(1.15);
+    transform: translate(-50%, 0) scale(1.15) scaleX(var(--dhth-float-flip, 1));
   }
   20% {
-    transform: translate(-50%, 0.15em) scale(1);
+    transform: translate(-50%, 0.15em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
   70% {
     opacity: 1;
-    transform: translate(-50%, 0.8em) scale(1);
+    transform: translate(-50%, 0.8em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
   100% {
     opacity: 0;
-    transform: translate(-50%, 1.35em) scale(1);
+    transform: translate(-50%, 1.35em) scale(1) scaleX(var(--dhth-float-flip, 1));
   }
 }
 
@@ -604,44 +620,62 @@
   }
 }
 
+/* Movement in these flashes goes through Ginzzzu's own offset variables, never
+ * through `transform`.
+ *
+ * Their wrapper transform is one long chain — drag offset, breathing scale,
+ * emotion tilt, and the mirror that turns a target to face its attacker — and an
+ * animated `transform` *replaces* that whole chain for its duration. A damage
+ * flash on a turned or dragged portrait would snap it upright, shake, and snap
+ * back. `--shakeX` and `--bobY` are terms *inside* their chain (registered with
+ * `@property`, which is what lets a custom property animate smoothly at all), so
+ * a recoil composes with everything else instead of replacing it. Ginzzzu's own
+ * emotion shakes drive them exactly this way.
+ *
+ * These classes only ever land on a `.ginzzzu-portrait-wrapper`, so the variables
+ * are always registered. If a future Ginzzzu renames them the flashes lose their
+ * movement and keep their colour — the same way every other part of this
+ * integration degrades. */
+
 /* Took a hit: red bloom with a short recoil shake. */
 @keyframes dhth-damage {
   0% {
     filter: none;
-    transform: translateX(0);
+    --shakeX: 0px;
   }
   15% {
     filter: drop-shadow(0 0 14px rgb(255 60 60 / 95%)) saturate(1.5) brightness(1.15);
-    transform: translateX(-6px);
+    --shakeX: -6px;
   }
   35% {
-    transform: translateX(5px);
+    --shakeX: 5px;
   }
   55% {
-    transform: translateX(-3px);
+    --shakeX: -3px;
   }
   75% {
-    transform: translateX(2px);
+    --shakeX: 2px;
   }
   100% {
     filter: none;
-    transform: translateX(0);
+    --shakeX: 0px;
   }
 }
 
-/* Healed: a soft green bloom with a gentle rise. */
+/* Healed: a soft green bloom with a gentle rise. Negative `--bobY` is upward —
+ * it is added into Ginzzzu's Y translate, where positive is down. */
 @keyframes dhth-heal {
   0% {
     filter: none;
-    transform: translateY(0);
+    --bobY: 0px;
   }
   40% {
     filter: drop-shadow(0 0 16px rgb(90 240 140 / 90%)) brightness(1.12);
-    transform: translateY(-5px);
+    --bobY: -5px;
   }
   100% {
     filter: none;
-    transform: translateY(0);
+    --bobY: 0px;
   }
 }
 
@@ -650,27 +684,63 @@
 @keyframes dhth-blocked {
   0% {
     filter: none;
-    transform: translateX(0);
+    --shakeX: 0px;
   }
   20% {
     filter: drop-shadow(0 0 12px rgb(200 225 255 / 95%))
       drop-shadow(0 0 20px rgb(120 170 255 / 60%)) brightness(1.1);
-    transform: translateX(-5px);
+    --shakeX: -5px;
   }
   45% {
-    transform: translateX(4px);
+    --shakeX: 4px;
   }
   70% {
-    transform: translateX(-2px);
+    --shakeX: -2px;
   }
   100% {
     filter: none;
-    transform: translateX(0);
+    --shakeX: 0px;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Portrait video effects (JB2A)                                              */
+/*                                                                            */
+/* A <video> appended to the wrapper for the life of one animation. Being a    */
+/* child of the wrapper is what makes it ride along with Ginzzzu's drag and    */
+/* mirror with their flip for free — none of that survives absolute            */
+/* positioning against the viewport.                                          */
+/* -------------------------------------------------------------------------- */
+
+/* Anchored high rather than centred on the wrapper. Portraits are tall and their
+ * lower third is routinely occluded by the NPC dock, so a centred effect can land
+ * behind UI; 40% puts it across the head and chest on every crop we use.
+ *
+ * Width comes from the wrapper, not the asset's own 400px, so it tracks Ginzzzu's
+ * per-actor height multiplier instead of drifting out of scale on a resized
+ * portrait. Sits under .dhth-float (z-index 100) so a damage number stays legible
+ * over the top of it. */
+.dhth-vfx {
+  position: absolute;
+  left: 50%;
+  top: var(--dhth-vfx-top, 40%);
+  width: var(--dhth-vfx-width, 100%);
+  /* scaleX mirrors JB2A's attacker-at-left authoring when the attacker's portrait
+   * is to the right. Set per effect in playVideoFx; 1 leaves it alone. */
+  transform: translate(-50%, -50%) scaleX(var(--dhth-vfx-flip, 1));
+  pointer-events: none;
+  z-index: 10;
 }
 
 /* Motion-sensitive viewers still get the colour cue, without the movement. */
 @media (prefers-reduced-motion: reduce) {
+  /* A full-motion video is precisely what this preference asks not to be shown,
+   * and unlike the flashes there is no reduced form of it worth keeping. The
+   * colour cue underneath still carries the information. */
+  .dhth-vfx {
+    display: none;
+  }
+
   .ginzzzu-portrait-wrapper.dhth-fx-targeted,
   .ginzzzu-portrait-wrapper.dhth-fx-damage,
   .ginzzzu-portrait-wrapper.dhth-fx-heal,
@@ -701,16 +771,379 @@
   @keyframes dhth-float-still {
     0% {
       opacity: 0;
-      transform: translate(-50%, 0);
+      transform: translate(-50%, 0) scaleX(var(--dhth-float-flip, 1));
     }
     8%,
     80% {
       opacity: 1;
-      transform: translate(-50%, 0);
+      transform: translate(-50%, 0) scaleX(var(--dhth-float-flip, 1));
     }
     100% {
       opacity: 0;
-      transform: translate(-50%, 0);
+      transform: translate(-50%, 0) scaleX(var(--dhth-float-flip, 1));
     }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Per-action animation config window                                         */
+/* -------------------------------------------------------------------------- */
+
+.dhth-vfx-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+
+.dhth-vfx-config__source {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.05em;
+}
+
+.dhth-vfx-config__source--action {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.dhth-vfx-config__status {
+  margin: 0 0 2px;
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.dhth-vfx-config__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dhth-vfx-config__row > label {
+  flex: 0 0 108px;
+  font-size: 0.9em;
+}
+
+.dhth-vfx-config__row > select,
+.dhth-vfx-config__row > input[type="number"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dhth-vfx-config__row--check > input {
+  flex: 0 0 auto;
+}
+
+/* The key field and its Browse button share one line; the input takes the slack. */
+.dhth-vfx-config__key {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dhth-vfx-config__key > input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dhth-vfx-config__key > button {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
+}
+
+.dhth-vfx-config__hint {
+  margin: -4px 0 4px;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* The short numeric fields sit together rather than as full-width rows, which
+ * keeps the window from getting tall. Auto-fit so adding one wraps instead of
+ * squeezing the rest past legibility. */
+.dhth-vfx-config__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(95px, 1fr));
+  gap: 8px;
+  /* Cells size to their own content. Without this they stretch to the tallest in
+   * the row, and the one carrying the duration readout makes every other input
+   * in that row grow to match it. */
+  align-items: start;
+}
+
+.dhth-vfx-config__grid .dhth-vfx-config__row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.dhth-vfx-config__grid .dhth-vfx-config__row > label {
+  flex: none;
+  font-size: 0.8em;
+  opacity: 0.85;
+}
+
+.dhth-vfx-config__footer {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dhth-vfx-config__footer > button {
+  flex: 1 1 0;
+}
+
+.dhth-vfx-config__save {
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Animation options window (settings submenu)                                */
+/* -------------------------------------------------------------------------- */
+
+.dhth-vfx-settings {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 12px;
+}
+
+.dhth-vfx-settings__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dhth-vfx-settings__row > label {
+  flex: 0 0 150px;
+  font-weight: 600;
+}
+
+.dhth-vfx-settings__row > select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dhth-vfx-settings__row--check > input {
+  flex: 0 0 auto;
+}
+
+.dhth-vfx-settings__hint {
+  margin: 3px 0 12px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+/* Shown only when the timing and chaining choices don't add up — see the app's
+ * `chainWithoutAction`. Warning-coloured because it means a setting is inert. */
+.dhth-vfx-settings__warn {
+  margin: 0 0 12px;
+  padding: 6px 8px;
+  border-left: 3px solid rgb(220 160 60);
+  background: rgb(220 160 60 / 12%);
+  font-size: 0.85em;
+}
+
+.dhth-vfx-settings__footer {
+  display: flex;
+  margin-top: 4px;
+}
+
+.dhth-vfx-settings__save {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Animation button on the system's action sheet                              */
+/* -------------------------------------------------------------------------- */
+
+/* Appended after the system's own form rather than inside it, so it needs its
+ * own separation from whatever the sheet ends with. The rule carries the border
+ * and spacing so the button keeps a symmetric box — put them on the button and
+ * they are painted as part of it, which is what pushes the label off-centre. */
+.dhth-vfx-sheet-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgb(128 128 128 / 35%);
+}
+
+.dhth-vfx-sheet-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  /* The icon and the label carry different intrinsic line boxes; equalising them
+   * is what actually settles the label on the centre line. */
+  line-height: 1;
+  font-weight: 600;
+}
+
+.dhth-vfx-sheet-button:hover {
+  text-shadow: 0 0 6px currentcolor;
+}
+
+/* The copy row is a label, a source list and its button on one line; the list
+ * takes the slack so long action names stay readable. */
+.dhth-vfx-config__copy > select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dhth-vfx-config__copy > button {
+  flex: 0 0 auto;
+  width: auto;
+  white-space: nowrap;
+}
+
+/* Effective runtime under the Speed field. Quiet — it is a readout, not a
+ * control, and it changes on every keystroke. */
+.dhth-vfx-config__duration {
+  font-size: 0.75em;
+  opacity: 0.6;
+  min-height: 1em;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Animation steps                                                            */
+/* -------------------------------------------------------------------------- */
+
+/* Steps sit side by side: they are tall and narrow, and there is far more
+ * horizontal room than vertical. Auto-fit means one step still fills the width
+ * and a fourth wraps onto a second row rather than shrinking the others past
+ * legibility. */
+.dhth-vfx-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 8px;
+  align-items: start;
+  margin: 4px 0 8px;
+}
+
+/* A fieldset so each step reads as one thing rather than a run of loose rows —
+ * with several steps the fields would otherwise blur into each other. */
+.dhth-vfx-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 8px 8px;
+  border: 1px solid rgb(128 128 128 / 35%);
+  border-radius: 4px;
+}
+
+.dhth-vfx-step > legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+/* Sits in the legend, so it has to shed the block-button sizing core gives it. */
+.dhth-vfx-step__remove {
+  width: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  line-height: 1;
+  font-size: 1.1em;
+  opacity: 0.6;
+}
+
+.dhth-vfx-step__remove:hover {
+  opacity: 1;
+}
+
+.dhth-vfx-step__preview {
+  margin-top: 2px;
+}
+
+.dhth-vfx-config__add {
+  margin-bottom: 4px;
+}
+
+/* Grid children need this or a long animation key stretches its whole column. */
+.dhth-vfx-step {
+  min-width: 0;
+}
+
+/* In a narrow column there is no room for a label beside its control, so they
+ * stack — matching the numeric fields, which already do. */
+.dhth-vfx-step .dhth-vfx-config__row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.dhth-vfx-step .dhth-vfx-config__row > label {
+  flex: none;
+  font-size: 0.8em;
+  opacity: 0.85;
+}
+
+/* The action-level controls are three short fields; letting them track a window
+ * widened for four steps side by side gives a 900px-wide dropdown holding the
+ * words "Every time". Capped and centred over the steps instead. */
+.dhth-vfx-config__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+/* Same reasoning for the full-width buttons under the steps. */
+.dhth-vfx-config__add,
+.dhth-vfx-config__footer {
+  width: 100%;
+  max-width: 700px;
+  margin-inline: auto;
+}
+
+/* Item sheets run their content to the window edge, unlike the action config
+ * sheet which pads its own. */
+.dhth-vfx-sheet-footer--inset {
+  margin-inline: 12px;
+  margin-bottom: 10px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Spanning animations (portrait to portrait)                                 */
+/* -------------------------------------------------------------------------- */
+
+/* Its own fixed overlay: a projectile belongs to two portraits, so unlike every
+ * other effect it cannot live inside either one. Above the portraits and their
+ * name badges, below a dragged portrait, and inert to the pointer throughout. */
+#dhth-vfx-span-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Stretched along the line — `fill` rather than `contain` is the point, since the
+ * asset's baked-in travel distance will never match the gap on screen. Rotated
+ * about its left edge, which is the end sitting on the acting character. */
+.dhth-vfx-span {
+  position: absolute;
+  transform-origin: 0 50%;
+  object-fit: fill;
+  pointer-events: none;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dhth-vfx-span {
+    display: none;
   }
 }

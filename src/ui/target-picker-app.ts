@@ -9,15 +9,18 @@ const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 /**
  * Section order, and the lang key for each heading.
  *
- * Enemies lead because they're what most targeted actions are aimed at, and
- * allies come last on purpose: for an `any`-target action the picker is the last
- * thing between a player and damaging their own party, so the friendly rows
- * shouldn't sit under the cursor.
+ * Ordered by how much damage a misclick does. Enemies lead because they're what
+ * most targeted actions are aimed at; allies come after them on purpose, since
+ * for an `any`-target action the picker is the last thing between a player and
+ * damaging their own party. Yourself is last by the same reasoning taken one
+ * step further — it's the pick you least want to make by accident, and the one
+ * you'll only be making on purpose.
  */
 const GROUP_ORDER: { key: TargetGroup; label: string }[] = [
   { key: "enemy", label: "DHTH.Picker.Group.Enemies" },
   { key: "neutral", label: "DHTH.Picker.Group.Neutral" },
   { key: "ally", label: "DHTH.Picker.Group.Allies" },
+  { key: "self", label: "DHTH.Picker.Group.Self" },
 ];
 
 export interface TargetPickerOptions {

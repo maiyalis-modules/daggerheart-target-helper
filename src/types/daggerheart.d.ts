@@ -38,6 +38,27 @@ declare global {
     amount?: number | null;
   }
 
+
+  /**
+   * The Item an Action belongs to. Actions are entries in `item.system.actionsList`
+   * rather than documents of their own, so per-action module data is stored as an
+   * item flag keyed by the action's `_id`.
+   */
+  interface DhItem {
+    uuid?: string;
+    name?: string;
+    /** Whether the current user may edit this item. GMs own everything. */
+    isOwner?: boolean;
+    img?: string;
+    /** The Actor this item belongs to, when it is owned. */
+    parent?: { id?: string; name?: string } | null;
+    /** Actions are entries here, each with a stable `_id` (daggerheart.js:9517). */
+    system?: { actionsList?: DhAction[] };
+    getFlag?: (scope: string, key: string) => unknown;
+    setFlag?: (scope: string, key: string, value: unknown) => Promise<unknown>;
+    unsetFlag?: (scope: string, key: string) => Promise<unknown>;
+  }
+
   interface DhActor {
     id: string;
     uuid: string;
@@ -59,7 +80,7 @@ declare global {
     /** Range band (melee/veryClose/close/far/veryFar), from `RangeField`. Blank means no restriction. */
     range?: string | null;
     actor?: DhActor | null;
-    item?: { uuid?: string; name?: string } | null;
+    item?: DhItem | null;
     /**
      * Resolves to the finished config, or `undefined` if the action bailed —
      * `prepareConfig` falsy, `preUseAction` returning false, the roll dialog

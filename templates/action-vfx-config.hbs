@@ -1,0 +1,142 @@
+<div class="dhth-vfx-config">
+  <div class="dhth-vfx-config__head">
+  <p class="dhth-vfx-config__source">{{itemName}}</p>
+
+  {{#if hasManyActions}}
+    <div class="dhth-vfx-config__row">
+      <label for="dhth-vfx-action">{{localize "DHTH.Vfx.Field.Action"}}</label>
+      <select id="dhth-vfx-action" data-dhth-vfx="action">
+        {{#each actions}}
+          <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+  {{else}}
+    <p class="dhth-vfx-config__source dhth-vfx-config__source--action">{{actionName}}</p>
+  {{/if}}
+
+  <p class="dhth-vfx-config__status">{{statusText}}</p>
+
+  {{#if canCopy}}
+    <div class="dhth-vfx-config__row dhth-vfx-config__copy">
+      <label for="dhth-vfx-copy">{{localize "DHTH.Vfx.Field.CopyFrom"}}</label>
+      <select id="dhth-vfx-copy" data-dhth-vfx="copySource">
+        {{#each copySources}}
+          <option value="{{this.id}}">{{this.name}}</option>
+        {{/each}}
+      </select>
+      <button type="button" data-dhth-vfx-action="copy">{{localize "DHTH.Vfx.Copy"}}</button>
+    </div>
+  {{/if}}
+
+  <div class="dhth-vfx-config__row dhth-vfx-config__row--check">
+    <label for="dhth-vfx-enabled">{{localize "DHTH.Vfx.Field.Enabled"}}</label>
+    <input type="checkbox" id="dhth-vfx-enabled" data-dhth-vfx="enabled" {{#if draft.enabled}}checked{{/if}} />
+  </div>
+
+  <div class="dhth-vfx-config__row">
+    <label for="dhth-vfx-playon">{{localize "DHTH.Vfx.Field.PlayOn"}}</label>
+    <select id="dhth-vfx-playon" data-dhth-vfx="playOn">
+      {{#each playOnOptions}}
+        <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+      {{/each}}
+    </select>
+  </div>
+
+  {{#if hasManySteps}}
+    <div class="dhth-vfx-config__row">
+      <label for="dhth-vfx-sequence">{{localize "DHTH.Vfx.Field.Sequence"}}</label>
+      <select id="dhth-vfx-sequence" data-dhth-vfx="sequence">
+        {{#each sequenceOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
+  {{/if}}
+
+  </div>
+
+  <div class="dhth-vfx-steps">
+    {{#each steps}}
+      <fieldset class="dhth-vfx-step" data-dhth-step="{{this.index}}">
+        <legend>
+          {{this.title}}
+          {{#if ../canRemoveStep}}
+            <button type="button" class="dhth-vfx-step__remove" data-dhth-vfx-action="remove-step"
+                    title="{{localize "DHTH.Vfx.RemoveStep"}}">&times;</button>
+          {{/if}}
+        </legend>
+
+        <div class="dhth-vfx-config__row">
+          <label>{{localize "DHTH.Vfx.Field.On"}}</label>
+          <select data-dhth-vfx="on">
+            {{#each this.onOptions}}
+              <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+
+        <div class="dhth-vfx-config__row">
+          <label>{{localize "DHTH.Vfx.Field.Key"}}</label>
+          <div class="dhth-vfx-config__key">
+            <input type="text" data-dhth-vfx="key" list="dhth-vfx-keys-{{this.index}}"
+                   value="{{this.key}}" placeholder="{{localize "DHTH.Vfx.Field.KeyPlaceholder"}}" />
+            <datalist id="dhth-vfx-keys-{{this.index}}"></datalist>
+            {{#if ../canBrowse}}
+              <button type="button" data-dhth-vfx-action="browse">{{localize "DHTH.Vfx.Browse"}}</button>
+            {{/if}}
+          </div>
+        </div>
+
+        <div class="dhth-vfx-config__row">
+          <label>{{localize "DHTH.Vfx.Field.Flip"}}</label>
+          <select data-dhth-vfx="flip">
+            {{#each this.flipOptions}}
+              <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+            {{/each}}
+          </select>
+        </div>
+
+        <div class="dhth-vfx-config__grid">
+          <div class="dhth-vfx-config__row">
+            <label>{{localize "DHTH.Vfx.Field.Scale"}}</label>
+            <input type="number" data-dhth-vfx="scale" value="{{this.scale}}" step="0.05" min="0.1" max="6" />
+          </div>
+          <div class="dhth-vfx-config__row">
+            <label>{{localize "DHTH.Vfx.Field.Anchor"}}</label>
+            <input type="number" data-dhth-vfx="anchor" value="{{this.anchor}}" step="0.05" min="0" max="1" />
+          </div>
+          <div class="dhth-vfx-config__row">
+            <label>{{this.delayLabel}}</label>
+            <input type="number" data-dhth-vfx="delayMs" value="{{this.delayMs}}" step="50" min="{{this.delayMin}}" max="10000" />
+          </div>
+          {{#if this.isSpanning}}
+            <div class="dhth-vfx-config__row">
+              <label>{{localize "DHTH.Vfx.Field.Reach"}}</label>
+              <input type="number" data-dhth-vfx="reach" value="{{this.reach}}" step="0.05" min="1" max="4" />
+            </div>
+          {{/if}}
+          <div class="dhth-vfx-config__row">
+            <label>{{localize "DHTH.Vfx.Field.Speed"}}</label>
+            <input type="number" data-dhth-vfx="speed" value="{{this.speed}}" step="0.05" min="0.1" max="4" />
+            <span class="dhth-vfx-config__duration" data-dhth-vfx-duration></span>
+          </div>
+        </div>
+
+        <button type="button" class="dhth-vfx-step__preview" data-dhth-vfx-action="preview-step">
+          {{localize "DHTH.Vfx.Preview"}}
+        </button>
+      </fieldset>
+    {{/each}}
+  </div>
+
+  <button type="button" class="dhth-vfx-config__add" data-dhth-vfx-action="add-step">
+    {{localize "DHTH.Vfx.AddStep"}}
+  </button>
+
+  <footer class="dhth-vfx-config__footer">
+    <button type="button" data-dhth-vfx-action="preview">{{localize "DHTH.Vfx.PreviewAll"}}</button>
+    <button type="button" data-dhth-vfx-action="clear">{{localize "DHTH.Vfx.Clear"}}</button>
+    <button type="button" class="dhth-vfx-config__save" data-dhth-vfx-action="save">{{localize "DHTH.Vfx.Save"}}</button>
+  </footer>
+</div>

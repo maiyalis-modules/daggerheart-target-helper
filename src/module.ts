@@ -5,6 +5,7 @@
  * sibling modules under `src/`; this file only bootstraps.
  */
 import { registerApi } from "./api.js";
+import { registerActionSheetButton } from "./ui/action-sheet-button.js";
 import { LOG_PREFIX, TEMPLATES } from "./constants.js";
 import { registerSettings } from "./settings.js";
 import { registerActionPortraits } from "./targeting/action-portraits.js";
@@ -21,6 +22,7 @@ Hooks.once("init", async () => {
   registerActionPortraits();
   registerMissFeedback();
   registerResourceFeedback();
+  registerActionSheetButton();
   // Published during init so a module whose own init runs later still sees it.
   registerApi();
   await foundry.applications.handlebars.loadTemplates(Object.values(TEMPLATES));

@@ -10,6 +10,7 @@
  */
 import { LOG_PREFIX, MODULE_ID } from "./constants.js";
 import { registerRangeOrigin, type RangeOriginResolver } from "./targeting/range-origin.js";
+import { ActionVfxConfigApp } from "./ui/action-vfx-config-app.js";
 import { TargetPickerApp } from "./ui/target-picker-app.js";
 
 /** What callers get. Documented here rather than inline so the contract is one thing. */
@@ -41,9 +42,35 @@ export interface TargetHelperApi {
    * and which targets the action will accept, stay with the acting actor.
    */
   registerRangeOrigin(resolver: RangeOriginResolver): void;
+
+  /**
+   * Open the **per-action animation config** for an item, optionally on a
+   * particular action.
+   *
+   * Accepts an Item or its uuid. Items with several actions get a picker at the
+   * top of the window, so one Grimoire's three actions stay independently
+   * configurable — which is the point of storing the config per action rather
+   * than per item.
+   *
+   * Returns whether a window opened; `false` means the uuid resolved to nothing,
+   * or the item has no actions to configure.
+   */
+  openActionVfxConfig(item: DhItem | string, actionId?: string): boolean;
 }
 
 export type { RangeOriginResolver };
+
+
+function openActionVfxConfig(item: DhItem | string, actionId?: string): boolean {
+  try {
+    const resolved = typeof item === "string" ? (fromUuidSync(item) as DhItem | null) : item;
+    if (!resolved) return false;
+    return ActionVfxConfigApp.open(resolved, actionId) !== null;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Could not open the animation config.`, error);
+    return false;
+  }
+}
 
 function openRangeSurvey(source: Token | string): boolean {
   const token = typeof source === "string" ? (canvas.tokens?.get(source) ?? null) : source;
@@ -73,5 +100,6 @@ export function registerApi(): void {
   (module as AnyObject)["api"] = {
     openRangeSurvey,
     registerRangeOrigin,
+    openActionVfxConfig,
   } satisfies TargetHelperApi;
 }

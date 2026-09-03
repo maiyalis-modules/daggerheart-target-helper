@@ -1,0 +1,33 @@
+<div class="dhth-vfx-settings">
+  <div class="dhth-vfx-settings__row dhth-vfx-settings__row--check">
+    <label for="dhth-vfxs-enabled">{{localize "DHTH.Settings.Vfx.Enabled.Name"}}</label>
+    <input type="checkbox" id="dhth-vfxs-enabled" data-dhth-vfxs="enabled" {{#if enabled}}checked{{/if}} />
+  </div>
+  <p class="dhth-vfx-settings__hint">{{localize "DHTH.Settings.Vfx.Enabled.Hint"}}</p>
+
+  <div class="dhth-vfx-settings__row">
+    <label for="dhth-vfxs-timing">{{localize "DHTH.Settings.Vfx.Timing.Name"}}</label>
+    <select id="dhth-vfxs-timing" data-dhth-vfxs="timing">
+      {{#each timingOptions}}
+        <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+      {{/each}}
+    </select>
+  </div>
+  <p class="dhth-vfx-settings__hint">{{localize "DHTH.Settings.Vfx.Timing.Hint"}}</p>
+
+  <div class="dhth-vfx-settings__row dhth-vfx-settings__row--check">
+    <label for="dhth-vfxs-chain">{{localize "DHTH.Settings.Vfx.ChainFlash.Name"}}</label>
+    <input type="checkbox" id="dhth-vfxs-chain" data-dhth-vfxs="chainFlash" {{#if chainFlash}}checked{{/if}} />
+  </div>
+  <p class="dhth-vfx-settings__hint">{{localize "DHTH.Settings.Vfx.ChainFlash.Hint"}}</p>
+
+  {{#if chainWithoutAction}}
+    <p class="dhth-vfx-settings__warn">{{localize "DHTH.Settings.Vfx.ChainFlash.Mismatch"}}</p>
+  {{/if}}
+
+  <footer class="dhth-vfx-settings__footer">
+    <button type="button" class="dhth-vfx-settings__save" data-dhth-vfxs-action="save">
+      {{localize "DHTH.Settings.Vfx.Save"}}
+    </button>
+  </footer>
+</div>

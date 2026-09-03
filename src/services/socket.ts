@@ -9,10 +9,63 @@
  * dispatches locally. Handlers therefore run exactly once per client.
  */
 import { SOCKET_EVENT } from "../constants.js";
+import type { VfxFlip, VfxPlacement } from "./portrait-fx.js";
+import type { VfxSequence, VfxTarget } from "./vfx-resolver.js";
 
 export type PortraitFxKind = "targeted" | "damage" | "heal";
 
+
+/** One of an action's animations, with its asset already resolved to a file. */
+export interface ResolvedVfxStep {
+  on: VfxTarget;
+  /** Concrete path, resolved by the sender. */
+  path: string;
+  placement: VfxPlacement;
+  flip: VfxFlip;
+  delayMs: number;
+  speed: number;
+  /** Spanning steps only — see `VfxStep.reach`. */
+  reach: number;
+}
+
+/**
+ * An action to depict, as distinct from its outcome.
+ *
+ * Assets are resolved on the acting client and sent as concrete paths so every
+ * client plays the same files — one key can match a whole family of colour and
+ * variant siblings, and a table where each player saw a different one would be
+ * quietly wrong. Mirroring is *not* sent: that depends on where each client's
+ * portraits happen to sit, and they are draggable.
+ *
+ * `targetActorIds` has already been filtered by the config's `playOn`, so a
+ * receiving client plays everything it is given without re-deciding.
+ */
+export interface ActionVfxPayload {
+  /** The acting actor: drawn on by caster steps, and the reference every target
+   * step faces. */
+  casterActorId: string;
+  /** Portraits the action is depicted on. */
+  targetActorIds: string[];
+  sequence: VfxSequence;
+  steps: ResolvedVfxStep[];
+  /**
+   * Portraits this action touches that are *not* animating — the target of a
+   * caster-only effect, or one filtered out by `playOn`.
+   *
+   * They still wait: all of an action's feedback should land after its animation,
+   * whichever portrait the animation happens to be on. They are released once
+   * every animating portrait is done.
+   */
+  followerActorIds: string[];
+}
+
 export interface TargetsEngagedPayload {
+  /**
+   * The acting actor, or `null` when it has none we can name. Carried only so
+   * each client can turn the targets to face it — which portrait sits where is a
+   * local question (they are draggable), but *who* to face is not.
+   */
+  casterActorId: string | null;
   /** Targets whose portraits should be raised, then lowered once they settle. */
   actorIds: string[];
   /** Targets that are the acting actor itself: animate, but never raise or lower. */
@@ -29,7 +82,10 @@ export interface TargetsEngagedPayload {
 type SocketMessage =
   | ({ type: "targetsEngaged" } & TargetsEngagedPayload)
   | { type: "targetsReleased"; actorIds: string[] }
-  | { type: "portraitFx"; actorId: string; kind: PortraitFxKind };
+  | { type: "portraitFx"; actorId: string; kind: PortraitFxKind }
+  | ({ type: "actionVfx" } & ActionVfxPayload)
+  | { type: "vfxExpected"; actorIds: string[] }
+  | { type: "vfxRelease"; actorIds: string[] };
 
 export interface SocketHandlers {
   /** Runs on every client. GM-only work is branched inside the handler. */
@@ -41,6 +97,20 @@ export interface SocketHandlers {
   onTargetsReleased: (actorIds: string[]) => void;
   /** Runs on every client. */
   onPortraitFx: (actorId: string, kind: PortraitFxKind) => void;
+  /** Runs on every client. */
+  onActionVfx: (payload: ActionVfxPayload) => void;
+  /**
+   * An animation is coming for these portraits. Sent at roll time even when the
+   * animation itself plays later, so a damage flash arriving in between knows to
+   * wait for it. Runs on every client.
+   */
+  onVfxExpected: (actorIds: string[]) => void;
+
+  /**
+   * Nothing is coming for these portraits after all — an animation that was
+   * announced and then never played. Runs on every client.
+   */
+  onVfxRelease: (actorIds: string[]) => void;
 }
 
 let handlers: SocketHandlers | null = null;
@@ -50,6 +120,7 @@ function dispatch(message: SocketMessage): void {
   switch (message.type) {
     case "targetsEngaged":
       handlers.onTargetsEngaged({
+        casterActorId: message.casterActorId,
         actorIds: message.actorIds,
         selfActorIds: message.selfActorIds,
         expectsEffect: message.expectsEffect,
@@ -60,6 +131,21 @@ function dispatch(message: SocketMessage): void {
       return;
     case "portraitFx":
       handlers.onPortraitFx(message.actorId, message.kind);
+      return;
+    case "actionVfx":
+      handlers.onActionVfx({
+        casterActorId: message.casterActorId,
+        targetActorIds: message.targetActorIds,
+        sequence: message.sequence,
+        steps: message.steps,
+        followerActorIds: message.followerActorIds,
+      });
+      return;
+    case "vfxExpected":
+      handlers.onVfxExpected(message.actorIds);
+      return;
+    case "vfxRelease":
+      handlers.onVfxRelease(message.actorIds);
       return;
   }
 }
@@ -85,4 +171,16 @@ export function emitTargetsReleased(actorIds: string[]): void {
 
 export function emitPortraitFx(actorId: string, kind: PortraitFxKind): void {
   broadcast({ type: "portraitFx", actorId, kind });
+}
+
+export function emitActionVfx(payload: ActionVfxPayload): void {
+  broadcast({ type: "actionVfx", ...payload });
+}
+
+export function emitVfxExpected(actorIds: string[]): void {
+  broadcast({ type: "vfxExpected", actorIds });
+}
+
+export function emitVfxRelease(actorIds: string[]): void {
+  broadcast({ type: "vfxRelease", actorIds });
 }
